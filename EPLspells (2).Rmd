@@ -1,0 +1,77 @@
+---
+title: "EPLspells"
+output: html_document
+---
+
+```{r}
+library(dplyr)
+
+#load("G:/My Drive/Macalester Courses/Spring 2021/STAT 453/Other resources/New Datasets/Will_Orser_Project_EPL/SeasonFinish.RData")
+
+#load("G:/My Drive/Macalester Courses/Spring 2021/STAT 453/Other resources/New Datasets/Will_Orser_Project_EPL/SeasonFinish2.RData")
+
+SeasonFinish2 = SeasonFinish
+```
+
+```{r}
+Team = c()
+Time = c()
+Status = c()
+SpellNumber = c()
+NewlyPromoted = c()
+
+position = data.frame(matrix(nrow=480,ncol=20))
+colnames(position)=c("year1","year2","year3","year4","year5","year6","year7","year8","year9","year10","year11","year12","year13","year14","year15","year16","year17","year18","year19","year20")
+
+#Promoted20072008 = c("Derby County","Birmingham City","Sunderland")
+
+Promoted20002001 = c("Charlton Athletic","Manchester City","Ipswich Town")
+
+j = 1
+
+for( k in 1:nrow(SeasonFinish2) ) {
+
+v = as.numeric(SeasonFinish2[k,2:ncol(SeasonFinish2)])
+i=1
+temp=0
+spell=1
+while(i < length(v)+1 ) {
+  while( !is.na(v[i]) ) {temp=temp+1; position[j,temp]=v[i] ; i=i+1} ;
+Team[j]=as.character(SeasonFinish2[k,1]) ; Time[j]=temp ; Status[j]=ifelse(i==length(v)+1&v[length(v)]<18,0,1) ; SpellNumber[j]=spell ; NewlyPromoted[j]=ifelse(spell==1&!is.na(v[1])& !(SeasonFinish2[k,1] %in% Promoted20002001),0,1) ; i=i+1 ; j=j+1 ; if(temp>0) {spell=spell+1} ; temp=0
+}
+}
+
+data = data.frame( cbind(Team,Time,Status,SpellNumber,NewlyPromoted,position) )
+#data = data.frame( cbind(Team,Time,Status,SpellNumber,NewlyPromoted) )
+
+data = data %>% filter( Time > 0 )
+```
+
+```{r}
+data %>% 
+  rename(
+    "2001/02" = year2,
+    "2002/03" = year3,
+    "2003/04" = year4,
+    "2004/05" = year5,
+    "2005/06" = year6,
+    "2006/07" = year7,
+    "2007/08" = year8,
+    "2008/09" = year9,
+    "2009/10" = year10,
+    "2010/11" = year11,
+    "2011/12" = year12,
+    "2012/13" = year13,
+    "2013/14" = year14,
+    "2014/15" = year15,
+    "2015/16" = year16,
+    "2016/17" = year17,
+    "2017/18" = year18,
+    "2018/19" = year19,
+    "2019/20" = year20) -> data
+```
+
+
+```{r}
+write.csv(x=data,file="EPLDuration.csv")
+```

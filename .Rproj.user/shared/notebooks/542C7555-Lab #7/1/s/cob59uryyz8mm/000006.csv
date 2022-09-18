@@ -1,0 +1,3 @@
+"0","KM = survfit( Surv( Time , Status ) ~ ExcisionStatus , data=Burns )"
+"0",""
+"0","plot( KM , fun='cloglog' , mark.time=FALSE , lty=1:2 )"

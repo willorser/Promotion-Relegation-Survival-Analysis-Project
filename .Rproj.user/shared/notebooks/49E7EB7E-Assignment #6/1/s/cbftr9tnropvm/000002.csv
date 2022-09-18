@@ -1,0 +1,4 @@
+"0","KM = survfit( Surv( Time , Status ) ~ Treatment , data=Gastric )"
+"0",""
+"0","#Red line is chemotherapy, blue line is chemotherapy/radiation"
+"0","plot(KM, col = c(""red"", ""blue""), main = ""Kaplan-Meier"", xlab = ""Days"", ylab = ""Survival Probability"")"

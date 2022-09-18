@@ -1,0 +1,2 @@
+"0","TotalShotsTable %>% "
+"0","  left_join(TotalShotsTargetTable, by = c(""season"", ""Manager"")) -> ShotAccuracyTable"

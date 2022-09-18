@@ -1,0 +1,3 @@
+"0","KM = survfit( Surv( Time , Status ) ~ Sex , data=Lung )"
+"0",""
+"0","plot(KM, col = c(""pink"", ""blue""), main = ""Kaplan-Meier"", xlab = ""Days"", ylab = ""Survival Probability"")"

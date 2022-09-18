@@ -1,0 +1,1 @@
+"0","curve( 1 - pnorm(x,mean=19,sd=26.2), xlim=c(0,150), ylim=c(0,1), ylab=""Survival"", xlab=""Weeks"", col='purple')"

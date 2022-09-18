@@ -1,0 +1,2 @@
+"0","m = coxph( Surv(Time,Status) ~ Treatment, data=Burns )"
+"0","plot( cox.zph( m , transform = identity ) )"

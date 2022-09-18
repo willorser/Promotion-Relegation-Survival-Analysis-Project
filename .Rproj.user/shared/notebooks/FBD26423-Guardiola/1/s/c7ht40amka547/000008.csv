@@ -1,0 +1,8 @@
+"0","all_seasons %>%"
+"0","  filter(HomeTeam == ""Man City"" | AwayTeam == ""Man City"") %>%"
+"0","  mutate(GameLocation = case_when(HomeTeam == ""Man City"" ~ ""Home"","
+"0","                              HomeTeam != ""Man City"" ~ ""Away"")) %>%"
+"0","  mutate(Manager = case_when(season %in% c(""2013-14"", ""2014-15"", ""2015-16"") ~ ""Pellegrini"","
+"0","                              season %in% c(""2016-17"", ""2017-18"", ""2018-19"") ~ ""Guardiola"")) %>%"
+"0","  group_by(season, GameLocation, Manager) %>%"
+"0","  summarize(across(where(is.numeric),~sum(.x)))"

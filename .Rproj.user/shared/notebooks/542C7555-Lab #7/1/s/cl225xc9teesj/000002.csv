@@ -1,0 +1,2 @@
+"0","BurnsTVC = read.csv( ""https://www.macalester.edu/~addona/BurnsTVC.csv"" )"
+"0","BurnsTVC[ 29:57, c(1,2,3,21) ]"

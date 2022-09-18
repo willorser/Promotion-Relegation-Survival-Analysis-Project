@@ -1,0 +1,5 @@
+"0","Man_City_Stats_PL_Website <- Man_City_Stats_PL_Website %>%"
+"0","    mutate(Manager = case_when(Season %in% c(""2013-14"", ""2014-15"", ""2015-16"") ~ ""Pellegrini"","
+"0","                              Season %in% c(""2016-17"", ""2017-18"", ""2018-19"") ~ ""Guardiola""))"
+"0",""
+"0","Man_City_Stats_PL_Website"

@@ -1,0 +1,8 @@
+"0","library(dplyr)"
+"0",""
+"0","#load(""G:/My Drive/Macalester Courses/Spring 2021/STAT 453/Other resources/New Datasets/Will_Orser_Project_EPL/SeasonFinish.RData"")"
+"0",""
+"0","load(""G:/My Drive/Macalester Courses/Spring 2021/STAT 453/Other resources/New Datasets/Will_Orser_Project_EPL/SeasonFinish2.RData"")"
+"2","cannot open compressed file 'G:/My Drive/Macalester Courses/Spring 2021/STAT 453/Other resources/New Datasets/Will_Orser_Project_EPL/SeasonFinish2.RData', probable reason 'No such file or directory'"
+"2","Error in readChar(con, 5L, useBytes = TRUE) : cannot open the connection
+"

@@ -1,0 +1,1436 @@
+---
+title: 'Survival Analysis Final Project: Promotion-Relegation'
+author: "Will Orser"
+date: "2/5/2021"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(dplyr)
+library(tidyverse)
+library(ggplot2)
+library(survival)
+```
+
+
+```{r}
+#Read in data from Kaggle dataset
+season0708 <- read.csv("~/Desktop/Survival Analysis/Final Project/epl20072008.csv")
+season0708 <- season0708[-c(11:13)]
+season0809 <- read.csv("~/Desktop/Survival Analysis/Final Project/epl20082009.csv")
+season0910 <- read.csv("~/Desktop/Survival Analysis/Final Project/epl20092010.csv")
+season1011 <- read.csv("~/Desktop/Survival Analysis/Final Project/epl20102011.csv")
+season1112 <- read.csv("~/Desktop/Survival Analysis/Final Project/epl20112012.csv")
+season1213 <- read.csv("~/Desktop/Survival Analysis/Final Project/epl20122013.csv")
+season1314 <- read.csv("~/Desktop/Survival Analysis/Final Project/epl20132014.csv")
+season1415 <- read.csv("~/Desktop/Survival Analysis/Final Project/epl20142015.csv")
+season1516 <- read.csv("~/Desktop/Survival Analysis/Final Project/epl20152016.csv")
+season1617 <- read.csv("~/Desktop/Survival Analysis/Final Project/epl20162017.csv")
+```
+
+
+```{r}
+#Add Season Name to each season
+season0708 %>% 
+  mutate(Season = "2007/08") -> season0708
+
+season0809 %>% 
+  mutate(Season = "2008/09") -> season0809
+
+season0910 %>% 
+  mutate(Season = "2009/10") -> season0910
+
+season1011 %>% 
+  mutate(Season = "2010/11") -> season1011
+
+season1112 %>% 
+  mutate(Season = "2011/12") -> season1112
+
+season1213 %>% 
+  mutate(Season = "2012/13") -> season1213
+
+season1314 %>% 
+  mutate(Season = "2013/14") -> season1314
+
+season1415 %>% 
+  mutate(Season = "2014/15") -> season1415
+
+season1516 %>% 
+  mutate(Season = "2015/16") -> season1516
+
+season1617 %>% 
+  mutate(Season = "2016/17") -> season1617
+
+full <- rbind(season0708, season0809, season0910, season1011, season1112, season1213, season1314, season1415, season1516, season1617)
+
+full <- full[-c(3, 4:10)]
+```
+
+
+```{r}
+#Manual creation of EPL Final Table dataframes
+
+season0001 = data.frame(X. = c(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20), Team = c("Manchester United", "Arsenal", "Liverpool", "Leeds United", "Ipswich Town", "Chelsea", "Sunderland", "Aston Villa", "Charlton Athletic", "Southampton", "Newcastle United", "Tottenham Hotspur", "Leicester City", "Middlesbrough", "West Ham United", "Everton", "Derby County", "Manchester City", "Coventry City", "Bradford City"), Season = "2000/01")
+
+season0102 = data.frame(X. = c(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20), Team = c("Arsenal", "Liverpool", "Manchester United", "Newcastle United", "Leeds United", "Chelsea", "West Ham United", "Aston Villa", "Tottenham Hotspur", "Blackburn Rovers", "Southampton", "Middlesbrough", "Fulham", "Charlton Athletic", "Everton", "Bolton Wanderers", "Sunderland", "Ipswich Town", "Derby County", "Leicester City"), Season = "2001/02")
+
+season0203 = data.frame(X. = c(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20), Team = c("Manchester United", "Arsenal", "Newcastle United", "Chelsea", "Liverpool", "Blackburn Rovers", "Everton", "Southampton", "Manchester City", "Tottenham Hotspur", "Middlesbrough", "Charlton Athletic", "Birmingham City", "Fulham", "Leeds United", "Aston Villa", "Bolton Wanderers", "West Ham United", "West Bromwich Albion", "Sunderland"), Season = "2002/03")
+
+season0304 = data.frame(X. = c(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20), Team = c("Arsenal", "Chelsea", "Manchester United", "Liverpool", "Newcastle United", "Aston Villa", "Charlton Athletic", "Bolton Wanderers", "Fulham", "Birmingham City", "Middlesbrough", "Southampton", "Portsmouth", "Tottenham Hotspur", "Blackburn Rovers", "Manchester City", "Everton", "Leicester City", "Leeds United", "Wolverhampton Wanderers"), Season = "2003/04")
+
+season0405 = data.frame(X. = c(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20), Team = c("Chelsea", "Arsenal", "Manchester United", "Everton", "Liverpool", "Bolton Wanderers", "Middlesbrough", "Manchester City", "Tottenham Hotspur", "Aston Villa", "Charlton Athletic", "Birmingham City", "Fulham", "Newcastle United", "Blackburn Rovers", "Portsmouth", "West Bromwich Albion", "Crystal Palace", "Norwich City", "Southampton"), Season = "2004/05")
+
+season0506 = data.frame(X. = c(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20), Team = c("Chelsea", "Manchester United", "Liverpool", "Arsenal", "Tottenham Hotspur", "Blackburn Rovers", "Newcastle United", "Bolton Wanderers", "West Ham United", "Wigan Athletic", "Everton", "Fulham", "Charlton Athletic", "Middlesbrough", "Manchester City", "Aston Villa", "Portsmouth", "Birmingham City", "West Bromwich Albion", "Sunderland"), Season = "2005/06")
+
+season0607 = data.frame(X. = c(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20), Team = c("Manchester United", "Chelsea", "Liverpool", "Arsenal", "Tottenham Hotspur", "Everton", "Bolton Wanderers", "Reading", "Portsmouth", "Blackburn Rovers", "Aston Villa", "Middlesbrough", "Newcastle United", "Manchester City", "West Ham United", "Fulham", "Wigan Athletic", "Sheffield United", "Charlton Athletic", "Watford"), Season = "2006/07")
+
+season1718 = data.frame(X. = c(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20), Team = c("Manchester City", "Manchester United", "Tottenham Hotspur", "Liverpool", "Chelsea", "Arsenal", "Burnley", "Everton", "Leicester City", "Newcastle United", "Crystal Palace", "AFC Bournemouth", "West Ham United", "Watford", "Brighton & Hove Albion", "Huddersfield Town", "Southampton", "Swansea City", "Stoke City", "West Bromwich Albion"), Season = "2017/18")
+
+season1819 = data.frame(X. = c(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20), Team = c("Manchester City", "Liverpool", "Chelsea", "Tottenham Hotspur", "Arsenal", "Manchester United", "Wolverhampton Wanderers", "Everton", "Leicester City", "West Ham United", "Watford", "Crystal Palace", "Newcastle United", "AFC Bournemouth", "Burnley", "Southampton", "Brighton & Hove Albion", "Cardiff City", "Fulham", "Huddersfield Town"), Season = "2018/19")
+
+season1920 = data.frame(X. = c(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20), Team = c("Liverpool", "Manchester City", "Manchester United", "Chelsea", "Leicester City", "Tottenham Hotspur", "Wolverhampton Wanderers", "Arsenal", "Sheffield United", "Burnley", "Southampton", "Everton", "Newcastle United", "Crystal Palace", "Brighton & Hove Albion", "West Ham United", "Aston Villa", "AFC Bournemouth", "Watford", "Norwich City"), Season = "2019/20")
+
+fuller <- rbind(season0001, season0102, season0203, season0304, season0405, season0506, season0607, full, season1718, season1819, season1920)
+```
+
+
+
+```{r}
+#Create SeasonFinish dataframe. 
+fuller %>% 
+  pivot_wider(id_cols = Team, names_from = Season, values_from = X.) -> SeasonFinish
+
+save(SeasonFinish, file = "SeasonFinish2.RData")
+```
+
+
+```{r}
+#Manual Creation of the variable for "Transfer Market Expenditure in First EPL Season". Uses "data" dataframe from EPLspells (2).Rmd
+
+#Comment
+
+data %>% 
+#filters to only newly-promoted EPL clubs
+  filter(NewlyPromoted == 1) -> NewlyPromotedClubs
+
+NewlyPromotedClubs %>% 
+  mutate(TMEFS = c(10560000, 6520000, 70750000, 175010000, 22800000, 45650000, 15380000, 51150000, 1250000, 25150000, 52750000, 23750000, 26280000, 24940000, 22300000, 48900000, 36310000, 55660000, 128150000, 3440000, 17240000, 32230000, 22060000, 18650000, 17440000, 26750000, 15210000, 12950000, 10860000, 21400000, 124030000, 5670000, 36290000, 9380000, 16780000, 55550000, 9700000, 17350000, 10150000, 11900000, 19830000, 78650000, 11520000, 91880000, 37350000, 19740000, 34210000, 44000000, 14890000, 13880000, 50160000, 6300000, 14140000, 28850000, 47890000, 50400000, 56320000, 60620000, 73700000, 62430000)) -> NewlyPromotedClubs
+
+NewlyPromotedClubs %>% 
+  mutate(TMEFSmillions = TMEFS / 1000000) -> NewlyPromotedClubs
+
+NewlyPromotedClubs <- NewlyPromotedClubs[-c(26)]
+```
+
+
+```{r}
+#Manual Creation of the Squad Value Variable
+
+fuller %>% 
+  filter(Season == "2005/06" | Season == "2006/07" | Season == "2007/08" | Season == "2008/09" | Season == "2009/10" | Season == "2010/11" | Season == "2011/12" | Season == "2012/13" | Season == "2013/14" | Season == "2014/15" | Season == "2015/16" | Season == "2016/17" | Season == "2017/18" | Season == "2018/19" | Season == "2019/20") -> fuller2
+
+fuller2 %>% 
+  mutate(SquadValueMillions = c(387.39, 315.07, 206.14, 239.75, 160.05, 77.77, 155.32, 72.49, 46.64, 39.82, 120.75, 77.99, 82.47, 104.09, 84.04, 110.91, 99.91, 104.91, 60.56, 35.81, 250.8, 444.26, 244.75, 243.54, 183.54, 101.17, 68.37, 25.85, 86.24, 79.59, 103.48, 97.3, 170.72, 96.42, 102.99, 85.09, 59.34, 29.04, 82.12, 20.63, 359.59, 466.68, 234, 282.75, 123.09, 92.29, 71.72, 106.15, 98.12, 116.88, 211.07, 140.91, 94.68, 64.41, 55.47, 72.19, 82.19, 43.2, 70.90, 55.63, 391.71, 280.20, 444.62, 275.94, 178.81, 122.98, 80.41, 233.86, 88.61, 225.83, 67.76, 54.67, 93.17, 144.65, 95.43, 100.40, 42.49, 148.45, 81.02, 70.46, 488.29, 399.25, 309.1, 274.12, 346.39, 176.44, 370.26, 243.71, 69.85, 99.33, 84.48, 102.08, 144.87, 93.86, 65.67, 81.29, 130.13, 42.30, 83.22, 109.84, 422.57, 490.77, 420.78, 334.81, 325.60, 402.05, 196.38, 123.15, 228.53, 151.06, 93.53, 105.22, 106.04, 102.74, 104.61, 79.31, 84.48, 113.19, 41.91, 174.85, 507.98, 438.08, 342.57, 347.60, 132.58, 514.25, 209.19, 272.53, 130.41, 89.51, 44.61, 24.75, 137.56, 130.96, 77, 173.36, 116.66, 107.97, 99.72, 90.20, 488.95, 561.17, 449.35, 323.13, 340.48, 137.28, 303, 91.3, 96.8, 125.9, 77.72, 125.95, 109.01, 75.74, 111.13, 209.28, 139.7, 89.65, 48.4, 165, 526.90, 299.75, 641.27, 365.97, 239.25, 325.60, 562.93, 112.75, 138.60, 207.74, 70.68, 130.43, 141.08, 166.38, 127.93, 76.89, 101.15, 105.33, 163.19, 101.59, 578.71, 525.80, 444.79, 574.64, 328.08, 313.50, 165.44, 118.47, 141.74, 98.23, 195.25, 135.30, 110.66, 61.44, 153.84, 126.78, 129.70, 134.48, 40.43, 126.56, 100.38, 449.46, 279.13, 498.03, 411.57, 206.25, 203.72, 357.50, 139.98, 637.78, 224.54, 152.02, 121.14, 128.70, 133.10, 74.83, 141.08, 220.72, 114.13, 123.53, 663.63, 424.05, 683.54, 433.57, 575.03, 586.58, 312.79, 235.68, 113.85, 126.61, 264.85, 192.50, 212.58, 237.27, 150.81, 89.98, 208.29, 146.25, 133.93, 123.75, 677.99, 709.61, 588.89, 544.50, 714.62, 697.29, 106.54, 381.43, 277.31, 184, 213.87, 127.71, 291.34, 184.03, 117.43, 70.84, 272.25, 188.47, 195.58, 182.05, 1160, 990.11, 1150, 901.56, 652.63, 916.30, 176.47, 472.45, 361.90, 340.67, 187.44, 288.61, 220, 190.08, 204.33, 297.61, 189.92, 83.60, 263.45, 124.47, 1200, 1400, 852.72, 876.70, 423.23, 1150, 346.94, 748.61, 121.88, 226.13, 285.78, 578.05, 343.83, 273.52, 248.41, 408.93, 203.06, 342.32, 297.72, 121.94)) -> SquadValues
+```
+
+
+```{r}
+#Manual Creation of the "Goals Scored", "Goals Conceded", and "Draws" Variables
+
+fuller %>% 
+  mutate(GoalsScored = c(79, 63, 71, 64, 57, 68, 46, 46, 50, 40, 44, 47, 39, 44, 45, 45, 37, 41, 36, 30, 79, 67, 87, 74, 53, 66, 48, 46, 49, 55, 46, 35, 36, 38, 45, 44, 29, 41, 33, 30, 74, 85, 63, 68, 61, 52, 48, 43, 47, 51, 48, 45, 41, 41, 58, 42, 41, 42, 29, 21, 73, 67, 64, 55, 52, 48, 51, 48, 52, 43, 44, 44, 47, 47, 51, 55, 45, 48, 40, 38, 72, 87, 58, 45, 52, 49, 53, 47, 47, 45, 42, 40, 52, 47, 32, 43, 36, 41, 42, 45, 72, 72, 57, 68, 53, 51, 47, 49, 52, 45, 34, 48, 41, 48, 43, 42, 37, 28, 31, 26, 83, 64, 57, 63, 57, 52, 47, 52, 45, 52, 43, 44, 38, 29, 35, 38, 37, 32, 34, 29, 80, 65, 74, 67, 55, 71, 50, 48, 45, 42, 66, 45, 43, 34, 36, 36, 38, 41, 46, 20, 68, 77, 68, 68, 55, 54, 39, 45, 42, 58, 34, 38, 41, 38, 40, 34, 39, 40, 28, 36, 103, 86, 83, 67, 73, 52, 61, 60, 38, 41, 34, 39, 48, 42, 32, 37, 47, 42, 34, 34, 78, 69, 60, 72, 55, 59, 51, 49, 48, 45, 56, 56, 46, 52, 46, 40, 46, 37, 55, 43, 93, 89, 74, 66, 56, 65, 50, 47, 48, 45, 44, 52, 45, 36, 42, 37, 43, 46, 48, 40, 86, 66, 75, 72, 66, 55, 71, 53, 47, 45, 41, 50, 34, 49, 47, 45, 41, 47, 43, 30, 102, 101, 71, 68, 61, 55, 64, 54, 45, 43, 33, 54, 40, 41, 39, 38, 43, 28, 40, 32, 73, 83, 71, 62, 58, 52, 54, 46, 48, 47, 48, 44, 38, 46, 40, 31, 31, 33, 28, 42, 68, 65, 69, 71, 49, 59, 65, 63, 41, 59, 59, 42, 40, 34, 39, 45, 48, 44, 39, 27, 85, 86, 80, 78, 77, 54, 62, 41, 55, 43, 47, 48, 41, 50, 45, 39, 40, 37, 27, 29, 106, 68, 74, 84, 62, 74, 36, 44, 56, 39, 45, 45, 48, 44, 34, 28, 37, 28, 35, 31, 95, 89, 63, 67, 73, 65, 47, 54, 51, 52, 52, 51, 42, 56, 45, 45, 35, 34, 34, 22, 85, 102, 66, 69, 67, 61, 52, 56, 39, 43, 51, 44, 38, 31, 39, 49, 41, 40, 36, 26), 
+         
+GoalsConceded = c(31, 38, 39 ,43, 42 ,45, 41, 43, 57, 48, 50, 54, 51, 44, 50 , 59, 59, 65, 63, 70, 36, 30, 45, 52, 37, 38, 57, 47, 53, 51, 54, 47, 44, 49, 57, 62, 51, 64, 63, 64, 34, 42, 48, 38, 41, 43, 49, 46, 54, 62, 44, 56, 49, 50, 57, 47, 51, 59, 65, 65, 26, 30, 35, 37, 40, 44, 51, 56, 46, 48, 52, 45, 54, 57, 59, 54, 57, 65, 79, 77, 15, 36, 26, 46, 41, 44, 46, 39, 41, 52, 58, 46, 60, 57, 43, 59, 61, 62, 77, 66, 22, 34, 25, 31, 38, 42, 42, 41, 55, 52, 49, 58, 55, 58, 48, 55, 62, 50, 58, 69, 27, 24, 27, 35, 54, 36, 52, 47, 42, 54, 41, 49, 47, 44, 59, 60, 59, 55, 60, 59, 22, 26, 31, 28, 33, 51, 48, 40, 53, 50, 61, 65, 53, 51, 59, 54, 60, 66, 62, 89, 24, 27, 24, 37, 37, 48, 34, 45, 45, 50, 45, 55, 53, 57, 60, 54, 64, 59, 57, 67, 32, 28, 41, 41, 45, 39, 35, 49, 47, 55, 48, 46, 56, 67, 56, 79, 66, 82, 75, 66, 37, 33, 33, 43, 46, 44, 45, 43, 59, 56, 71, 57, 48, 56, 59, 61, 66, 58, 78, 70, 29, 33, 49, 41, 51, 46, 40, 40, 51, 52, 51, 66, 46, 53, 62, 53, 66, 77, 78, 82, 43, 34, 39, 37, 46, 40, 43, 57, 51, 53, 58, 60, 45, 60, 69, 68, 54, 73, 73, 60, 37, 50, 27, 41, 39, 51, 43, 46, 52, 59, 48, 54, 51, 60, 61, 53, 59, 62, 85, 74, 32, 38, 36, 37, 53, 48, 33, 49, 45, 51, 50, 47, 51, 55, 63, 53, 57, 51, 53, 73, 36, 36, 35, 41, 35, 41, 51, 50, 55, 53, 55, 52, 50, 48, 51, 67, 62, 65, 67, 76, 33, 26, 39, 42, 44, 29, 44, 48, 67, 51, 64, 63, 56, 63, 70, 55, 68, 80, 53, 69, 27, 28, 36, 38, 38, 51, 39, 58, 60, 47, 55, 61, 68, 64, 54, 58, 56, 56, 68, 56, 23, 22, 39, 39, 51, 54, 46, 46, 48, 55, 59, 53, 48, 70, 68, 65, 60, 69, 81, 76, 33, 35, 36, 54, 41, 47, 40, 48, 39, 50, 60, 56, 58, 50, 54, 62, 67, 65, 64, 75), 
+
+Draws = c(8, 10, 9, 8, 6, 10, 12, 15, 10, 10, 9, 10, 6, 15, 12, 9, 12, 10, 10, 11, 9, 8, 5, 8, 12, 13, 8, 14, 8, 10, 9, 9, 14, 14, 10, 13, 10, 9, 6, 13, 8, 9, 6, 10, 10, 12, 8, 13, 6, 8, 10, 7, 9, 9, 5, 9, 14, 12, 8, 7, 12, 7, 6, 12, 17, 11, 11, 11, 10, 14, 9, 11, 9, 6, 8, 14, 12, 15, 9, 12, 8, 8, 11, 7, 7, 10, 13, 13, 10, 11, 10, 12, 8, 14, 15, 9, 16, 12, 12, 14, 4, 8, 7, 7, 11, 6, 7, 11, 7, 6, 8, 6, 8, 9, 4, 12, 8, 10, 9, 6, 5, 11, 8, 11, 9, 13, 8, 7, 12, 7, 17, 10, 10, 9, 5, 15, 8, 8, 10, 13, 6, 10, 11, 13, 8, 12, 13, 9, 10, 10, 13, 10, 12, 10, 6, 10, 12, 6, 11, 8, 6, 11, 8, 12, 12, 11, 11, 9, 9, 5, 9, 9, 8, 11, 11, 9, 11, 13, 11, 8, 5, 4, 6, 7, 13, 13, 9, 13, 11, 11, 14, 10, 11, 9, 11, 9, 11, 6, 12, 7, 11, 8, 8, 11, 14, 7, 15, 16, 12, 11, 11, 13, 7, 10, 10, 15, 7, 15, 9, 12, 5, 5, 7, 9, 8, 10, 11, 10, 10, 8, 11, 11, 12, 12, 10, 17, 7, 6, 7, 10, 5, 9, 9, 10, 9, 15, 13, 7, 13, 10, 14, 10, 15, 14, 11, 8, 12, 9, 10, 13, 5, 6, 7, 7, 9, 6, 7, 11, 11, 4, 6, 9, 7, 8, 8, 7, 15, 9, 5, 9, 9, 7, 9, 10, 7, 8, 6, 8, 9, 9, 11, 11, 11, 8, 9, 17, 8, 11, 12, 6, 12, 11, 13, 9, 9, 9, 14, 12, 9, 14, 14, 11, 9, 13, 9, 9, 12, 10, 7, 8, 3, 8, 9, 10, 6, 15, 10, 10, 10, 9, 9, 8, 11, 5, 5, 7, 7, 7, 13, 6, 4, 6, 8, 12, 7, 6, 12, 10, 11, 8, 11, 11, 12, 8, 13, 10, 15, 9, 12, 13, 2, 7, 9, 2, 7, 9, 9, 9, 7, 7, 8, 7, 9, 6, 7, 12, 9, 4, 5, 7, 3, 3, 12, 6, 8, 11, 14, 14, 12, 9, 7, 10, 11, 10, 14, 9, 8, 7, 10, 6)) -> StyleofPlay
+
+```
+
+
+```{r}
+#Combine dataframes
+
+#Squad Value is only available from 2005/06 season onwards
+master <- merge(StyleofPlay, SquadValues, by = c("X.", "Team", "Season"))
+```
+
+
+
+**Data Analysis**  
+
+***Survival (alone, during first EPL spell)
+
+```{r, fig.height=8}
+data %>% 
+  filter(SpellNumber == 1) %>% 
+  ggplot(aes(x = Time, y = reorder(Team, Time))) +
+  geom_col() +
+  labs(x = "Time (Seasons)", y = "Club", title = "Survival Times of Clubs in their First EPL Spell") 
+```
+
+
+```{r}
+#Clubs that were in the EPL for all 20 seasons studied
+data %>% 
+  filter(SpellNumber == 1, Time == 20) %>% 
+  ggplot(aes(x = Time, y = Team)) +
+  geom_col(fill = "blue") +
+  labs(x = "Time (Seasons)", y = "Club", title = "The Blue Bloods of English Football") 
+```
+
+```{r}
+#Clubs that only stayed in the EPL for one season
+data %>% 
+  filter(SpellNumber == 1, Time == 1) %>% 
+  ggplot(aes(x = Time, y = Team, fill = NewlyPromoted)) +
+  geom_col() +
+  xlim(0, 20) +
+  labs(x = "Time (Seasons)", y = "Club", title = "The One-and-Dones") 
+#+
+ # theme(legend.position = "none") 
+
+#Light Blue are newly-promoted clubs and Dark Blue are not.
+```
+
+
+***Squad Value 
+
+```{r}
+#Chelsea's Squad Value over Time
+master %>% 
+  filter(Team == "Chelsea") %>% 
+  ggplot(aes(x = Season, y = SquadValueMillions, group = 1)) +
+  geom_point() +
+  geom_line() +
+  labs(title = "Chelsea FC Squad Value Over Time", x = "Season", y = "Squad Value (Millions of USD)") +
+  theme(axis.text.x = element_text(angle = 25))  
+```
+
+```{r}
+#Median Club Squad Value Over Time 
+master %>% 
+  group_by(Season) %>% 
+  mutate(MedianSquadValue = median(SquadValueMillions)) %>% 
+  ggplot(aes(x = Season, y = MedianSquadValue, group = 1)) +
+  geom_point() +
+  geom_line() +
+  labs(title = "Median PL Squad Value Over Time", x = "Season", y = "Squad Value (Millions of USD)") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 25))  
+
+```
+
+```{r}
+#Create the Squad Value Rank Variable by Season
+master %>% 
+  group_by(Season) %>% 
+  mutate(SquadValueRank = rank(-SquadValueMillions),
+         Relegated = as.numeric(X. == 18 | X. == 19 | X. == 20)) -> master2
+
+#Linear model exploring correlation between Season Finish Position and Squad Value Rank
+mod = lm(X. ~ SquadValueRank, data = master2)
+#summary(mod)
+
+#Linear model exploring correlation between Relegation Status and Squad Value Rank
+mod2 = lm(Relegated ~ SquadValueRank, data = master2)
+#summary(mod2)
+
+master2 %>% 
+  select("X.", "Team", "Season", "SquadValueRank") %>% 
+  filter(Season == '2014/15') -> tabledemo
+```
+
+mod: From the first model, a club with a *SquadValueRank* = 0 (with 1 being the most valuable) would finish at around 3rd position in the table. Each one-unit increase in *SquadValueRank* increases a club's finish position by 0.71208 places (~1 place). In other words, there is a strong correlation between a club's *SquadValueRank* and that club's final position in the table. Because the p-value of the *SquadValueRank* coefficient is much less than 0.05, we can conclude that this estimated relationship between final table position and *SquadValueRank* is statistically significant. This makes sense.
+
+mod2: From the second model, a club with a *SquadValueRank* = 0 (with 1 being the most valuable) would have a predicted *Relegated* value of -0.075789 (where 1 represents a club being relegated and 0 represents a club not being relegated). Each one-unit increase in *SquadValueRank* increases a club's predicted *Relegated* value by 0.021504. The p-value for the *SquadValueRank* coefficient is highly significant, p = 6.29e-10. Thus, there is a strong correlation between a club's *SquadValueRank* and the probability that club is relegated. 
+
+
+```{r}
+#Now, look only at Newly-Promoted Clubs. Add corresponding SquadValue to each observation. Create a new variable called First Season Relegated (FirstSeasonRelegated = 1 means the club was relegated in their first EPL season, FirstSeasonRelegated = 0 means the club was not relegated in their first season) as an indicator of how the clubs do in their first season.
+
+data %>% 
+  filter(NewlyPromoted == 1) -> intermediate
+
+intermediate[-c(6:25)] -> intermediate
+
+intermediate %>% 
+  mutate(Season = c("2000/01", "2005/06", "2007/08", "2019/20", "2000/01", "2012/13", "2010/11", "2017/18", "2003/04", "2014/15", "2016/17", "2005/06", "2012/13", "2007/08", "2000/01", "2002/03", "2001/02", "2001/02", "2018/19", "2001/02", "2002/03", "2007/08", "2009/10", "2002/03", "2004/05", "2008/09", "2010/11", "2003/04", "2003/04", "2009/10", "2018/19", "2004/05", "2013/14", "2004/05", "2011/12", "2015/16", "2019/20", "2005/06", "2006/07", "2012/13", "2006/07", "2019/20", "2006/07", "2015/16", "2008/09", "2008/09", "2013/14", "2016/17", "2009/10", "2014/15", "2016/17", "2010/11", "2011/12", "2011/12", "2014/15", "2013/14", "2018/19", "2015/16", "2017/18", "2017/18")) -> intermediate
+
+NewlyPromotedSquadValues <- merge(intermediate, SquadValues, by = c("Team", "Season")) 
+
+names(NewlyPromotedSquadValues)[7] <- "FirstSeasonFinish"
+
+NewlyPromotedSquadValues %>% 
+  mutate(FirstSeasonRelegated = as.numeric(FirstSeasonFinish == 18 | FirstSeasonFinish == 19 | FirstSeasonFinish == 20)) -> NewlyPromotedSquadValues
+
+NewlyPromotedSquadValuesMaster <- merge(NewlyPromotedSquadValues, master2, by = c("Team", "Season", "SquadValueMillions"))
+
+NewlyPromotedSquadValuesMaster[-c(10:13)] -> NewlyPromotedSquadValuesMaster
+
+#mean(NewlyPromotedSquadValuesMaster$Time)
+#Mean survival time of newly-promoted clubs in dataset: 3.2 seasons.
+
+```
+
+
+```{r}
+#Use survival analysis methods to explore the relationship between SquadValueMillions and Time using Parametric models
+
+#Exponential
+m1 = survreg( Surv(Time, Status) ~ SquadValueMillions , dist = "exponential" , data = NewlyPromotedSquadValuesMaster )
+#summary(m1)
+
+#Weibull
+m2 = survreg( Surv(Time, Status) ~ SquadValueMillions , dist = "weibull" , data = NewlyPromotedSquadValuesMaster )
+#summary(m2)
+
+#Normal
+m3 = survreg( Surv(Time, Status) ~ SquadValueMillions , dist = "gaussian" , data = NewlyPromotedSquadValuesMaster )
+#summary(m3)
+
+#Log-normal
+m4 = survreg( Surv(Time, Status) ~ SquadValueMillions , dist = "lognormal" , data = NewlyPromotedSquadValuesMaster )
+#summary(m4)
+
+#Exploring the relationship between SquadValueRank and Time using parametric models
+
+#Exponential
+m5 = survreg(Surv(Time, Status) ~ SquadValueRank, dist = "exponential", data = NewlyPromotedSquadValuesMaster)
+#summary(m5)
+
+#Weibull
+m6 = survreg(Surv(Time, Status) ~ SquadValueRank, dist = "weibull", data = NewlyPromotedSquadValuesMaster)
+#summary(m6)
+
+#Normal
+m7 = survreg(Surv(Time, Status) ~ SquadValueRank, dist = "gaussian", data = NewlyPromotedSquadValuesMaster)
+#summary(m7)
+
+#Log-Normal
+m8 = survreg(Surv(Time, Status) ~ SquadValueRank, dist = "lognormal", data = NewlyPromotedSquadValuesMaster)
+summary(m8)
+
+#SquadValueRank in a newly-promoted club's first EPL season is non-significant as a predictor of EPL survival time
+```
+
+From the all of the p-values on the estimated coefficients of the *SquadValueMillions* covariate, we do not have evidence to suggest that there is a relationship between a newly-promoted club's *Time* and that club's squad value in their first EPL season. (No model gave a significant p-value for the coefficient of *SquadValueMillions*).
+
+
+```{r}
+#Plot estimated survival curve from each parametric model as well as the non-parametric Kaplan-Meier survival curve. Assume the median *SquadValueMillions* value for each club, 70.9
+
+#median(NewlyPromotedSquadValuesMaster$SquadValueMillions)
+
+#Exponential
+#curve(1 - pexp(x, 1/exp(1.270000777+0.001856079*70.9)), ylab="Survival Probability", xlab="Time (Seasons)", main = "Survival of Newly-Promoted EPL Clubs", from = 0, to = max(NewlyPromotedSquadValuesMaster$Time), ylim=c(0,1),  col = "purple")
+
+#Weibull
+#curve( 1 - pweibull( x , shape =  1/0.8960386, scale = exp(1.330894044+0.001244007*70.9)) , add=TRUE , col='blue' )
+
+#Normal
+#curve( 1 - pnorm( x , mean =  3.64814744+0.00151441*70.9, sd = 3.199531) , add=TRUE , col='red' )
+
+#Log-Normal
+#curve(1 - plnorm( x , meanlog =  0.9188513066+0.0005802076*70.9, sdlog = 0.9668346), add = TRUE, col = "green")
+
+#Kaplan-Meier
+KM = survfit(Surv(Time, Status) ~1, data = NewlyPromotedSquadValuesMaster)
+#lines(KM, col = "black", conf.int = FALSE)
+```
+
+```{r}
+#Compare log-normal survival curves for clubs with differing *SquadValueMillions*: lowest squad value, median squad value, and highest squad value
+
+curve(1 - plnorm( x , meanlog =  0.9188513066+0.0005802076*20.63, sdlog = 0.9668346), ylab="Survival Probability", xlab="Time (Seasons)", main = "Survival of Newly-Promoted EPL Clubs", from = 0, to = max(NewlyPromotedSquadValuesMaster$Time), ylim=c(0,1), col = "green")
+
+curve(1 - plnorm( x , meanlog =  0.9188513066+0.0005802076*70.9, sdlog = 0.9668346), add = TRUE, col = "blue")
+
+curve(1 - plnorm( x , meanlog =  0.9188513066+0.0005802076*263.45, sdlog = 0.9668346), add = TRUE, col = "red")
+```
+
+
+```{r}
+#Compare log-normal survival curves for clubs with differing *SquadValueMillions*: 25th quantile squad value, median squad value, and 75th quantile squad value
+
+#quantile(NewlyPromotedSquadValuesMaster$SquadValueMillions)
+
+curve(1 - plnorm( x , meanlog =  0.9188513066+0.0005802076*46.64, sdlog = 0.9668346), ylab="Survival Probability", xlab="Time (Seasons)", main = "Survival of Newly-Promoted PL Clubs (Log-Normal)", from = 0, to = max(NewlyPromotedSquadValuesMaster$Time), ylim=c(0,1), col = "green")
+
+curve(1 - plnorm( x , meanlog =  0.9188513066+0.0005802076*70.9, sdlog = 0.9668346), add = TRUE, col = "blue")
+
+curve(1 - plnorm( x , meanlog =  0.9188513066+0.0005802076*117.43, sdlog = 0.9668346), add = TRUE, col = "red")
+
+legend(x = 6, y = 1, legend = c(46.64, 70.9, 117.43), fill = c("green", "blue", "red"), title = "Squad Value (Millions of USD)")
+```
+
+
+```{r}
+##Compare log-normal survival curves for clubs with differing *SquadValueRank*: 5th, 10th, and 15th *SquadValueRank
+
+curve(1 - plnorm( x , meanlog =  0.92363+0.00237*5, sdlog = 0.965), ylab="Survival Probability", xlab="Time (Seasons)", main = "Survival of Newly-Promoted PL Clubs (Log-Normal)", from = 0, to = max(NewlyPromotedSquadValuesMaster$Time), ylim=c(0,1), col = "green")
+
+curve(1 - plnorm( x , meanlog =  0.92363+0.00237*10, sdlog = 0.965), add = TRUE, col = "blue")
+
+curve(1 - plnorm( x , meanlog =  0.92363+0.00237*15, sdlog = 0.965), add = TRUE, col = "red")
+
+legend(x = 7.5, y = 1, legend = c(5, 10, 15), fill = c("green", "blue", "red"), title = "SquadValueRank")
+```
+
+
+
+```{r}
+#Coxph model and estimated survival curve for *SquadValueMillions*
+
+#quantile(NewlyPromotedSquadValues$SquadValueMillions)
+
+#25th, 50th, and 75th percentiles for SquadValueMillions
+
+new = data.frame(SquadValueMillions = c(46.64, 70.9, 117.43))
+
+mod = coxph(Surv(Time, Status) ~SquadValueMillions, data = NewlyPromotedSquadValuesMaster)
+plot(survfit(mod, newdata = new), conf.int = FALSE, col = c("green", "blue", "red"),  ylab="Survival Probability", xlab="Time (Seasons)", main = "Survival of Newly-Promoted PL Clubs (Cox PH)", xlim = c(0, max(NewlyPromotedSquadValuesMaster$Time)), ylim=c(0,1))
+
+legend(x = 6, y = 1, legend = c(46.64, 70.9, 117.43), fill = c("green", "blue", "red"), title = "Squad Value (Millions of USD)")
+
+#cox.zph(mod)
+```
+
+According to the output of the cox.zph function, the PH assumption holds for *SquadValueMillions* as a predictor of EPL survival time for newly-promoted clubs. 
+
+
+```{r}
+#Coxph model and estimated survival curve for *SquadValueRank*
+new = data.frame(SquadValueRank = c(5, 10, 15))
+
+mod = coxph(Surv(Time, Status) ~SquadValueRank, data = NewlyPromotedSquadValuesMaster)
+plot(survfit(mod, newdata = new), conf.int = FALSE, col = c("green", "blue", "red"),  ylab="Survival Probability", xlab="Time (Seasons)", main = "Survival of Newly-Promoted PL Clubs (Cox PH)", xlim = c(0, max(NewlyPromotedSquadValuesMaster$Time)), ylim=c(0,1))
+
+legend(x = 7.5, y = 1, legend = c(5, 10, 15), fill = c("green", "blue", "red"), title = "SquadValueRank")
+
+#cox.zph(mod)
+```
+
+According to the output of the cox.zph function, the PH assumption holds for *SquadValueRank* as a predictor of EPL survival time for newly-promoted clubs. 
+
+
+```{r}
+#Evaluate adequacy of each model using graphs of Cox-Snell residuals
+
+CoxSnell = function(cs,status,xlim=NULL,ylim=NULL)
+{
+kmcs = survfit( Surv(jitter(cs,amount=(max(cs)-min(cs))/1000),status) ~ 1 )$surv
+
+plot( log(-log(kmcs)) ~ sort(log(cs)) ,
+      xlab="log(Cox-Snell)", ylab="log(-log(S(Cox-Snell)))", xlim=xlim, ylim=ylim )
+
+abline(0,1,col='red')
+}
+
+#Exponential
+CS = -log( 1 - pexp( NewlyPromotedSquadValuesMaster$Time , 1/exp(1.270000777+0.001856079*NewlyPromotedSquadValuesMaster$SquadValueMillions) ) )
+
+CoxSnell( CS , NewlyPromotedSquadValuesMaster$Status, xlim = c(-2, 2), ylim = c(-4, 4))
+
+
+#Weibull
+CS = -log( 1 - pweibull( NewlyPromotedSquadValuesMaster$Time , shape =  1/0.8960386, scale = exp(1.330894044+0.001244007*NewlyPromotedSquadValuesMaster$SquadValueMillions)) )
+
+CoxSnell( CS , NewlyPromotedSquadValuesMaster$Status, xlim = c(-2, 2), ylim = c(-4, 4))
+
+
+#Normal
+CS = -log( 1 - pnorm( NewlyPromotedSquadValuesMaster$Time , mean =  3.64814744+0.00151441*NewlyPromotedSquadValuesMaster$SquadValueMillions, sd = 3.199531))
+
+CoxSnell( CS , NewlyPromotedSquadValuesMaster$Status, xlim = c(-2, 2), ylim = c(-4, 4))
+
+#Log-normal
+CS = -log( 1 - plnorm( NewlyPromotedSquadValuesMaster$Time , meanlog =  0.9188513066+0.0005802076*NewlyPromotedSquadValuesMaster$SquadValueMillions, sdlog = 0.9668346))
+
+CoxSnell( CS , NewlyPromotedSquadValuesMaster$Status, xlim = c(-2, 2), ylim = c(-4, 4))
+
+```
+
+None of the parametric models appears to be an adequate fit the data (predicting *Time* by using *SquadValueMillions*).
+
+
+```{r}
+#AIC Comparison of the parametric models
+
+#Exponential
+2*(2 - (-84.4))
+
+#Weibull
+
+2*(3 - (-84.1))
+
+#Normal
+2*(3 - (-97.8))
+
+#Log-Normal
+2*(3 - (-80.2))
+```
+
+According to the AIC scores of each parametric model, the Log-Normal is the best fit for the data. But, as we saw from the graphs of the Cox-Snell residuals, none of the parametric models is an adequate fit for the data. 
+
+
+
+Now, we'll see if there is a relationship between newly-promoted clubs' relegation status and measures of their squad values.
+
+```{r}
+#Explore the relationship between FirstSeasonRelegated with SquadValueRank and SquadValueMillions using linear models
+
+m1 = lm(FirstSeasonRelegated ~ SquadValueRank, data = NewlyPromotedSquadValuesMaster)
+#summary(m1)
+
+m2 = lm(FirstSeasonRelegated ~ SquadValueMillions, data = NewlyPromotedSquadValuesMaster)
+#summary(m2)
+
+
+#Relationship between FirstSeasonFinish with SquadValueRank and SquadValueMillions using linear models
+
+m3 = lm(FirstSeasonFinish ~ SquadValueRank, data = NewlyPromotedSquadValuesMaster)
+#summary(m3)
+
+m4 = lm(FirstSeasonFinish ~ SquadValueMillions, data = NewlyPromotedSquadValuesMaster)
+#summary(m4)
+```
+
+The first two linear models produce coefficients for *SquadValueRank* and *SquadValueMillions* with signs (+ or -) that are rather unintuitive. 
+
+In m1, the coefficient for *SquadValueRank* is -0.01376. A negative coefficient indicates that as *SquadValueRank* increases, a newly-promoted club is more likely to have a lower value for *FirstSeasonRelegated* (values closer to 0 than to 1 indicate the club is more likely to be relegated in their first season). So, what this model is saying is that as a newly-promoted club's relative squad value (in their first season) in the EPL decreases, this club is less likely to be relegated in their first season. This estimated coefficient for *SquadValueRank* has a p-value of 0.687, however, so it is nowhere near statistically significant.
+
+In m2, the coefficient for *SquadValueMillions* is -0.0001202. (While this number is virtually equal to 0,) A negative coefficient indicates that as *SquadValueMillions* increases, a newly-promoted club is more likely to have a lower value for *FirstSeasonRelegated* (values closer to 0 than to 1 indicate the club is more likely to be relegated in their first season). This model is telling us that as a club's absolute squad value (in their first EPL season) in the EPL increases, this club is more likely to be relegated in their first season. This estimated coefficient for *SquadValueMillions* has a p-value of 0.93508, however, so it is nowhere near statistically significant.
+
+The second two linear models produce coefficients for *SquadValueRank* and *SquadValueMillions* with signs (+ or -) that are intuitive, but non-significant.
+
+In m3, the coefficient for *SquadValueRank* is 0.01835. A positive coefficient indicates that as *SquadValueRank* increases, so does the predicted table finish position of a newly-promoted club. In other words, as a newly-promoted club's relative squad value (in their first EPL season) decreases, this club is more likely to finish lower in the table. The estimated coefficient for *SquadValueRank* in this model has a p-value of 0.94725, however, so it is non-significant.
+
+In m4, the coefficient for *SquadValueMillions* is -0.001067. (While this number is virtually equal to 0,) A negative coefficient indicates that as *SquadValueMillions* increases, a newly-promoted club's predicted table finish position decreases in their first EPL season. What this model is telling us is that as a newly-promoted club's absolute squad value (in their first EPL season) increases, this club is more likely to finish higher in the table. But, the estimated coefficient for *SquadValueMillions* in this model has a p-value of 0.929, so it too is non-significant. 
+
+
+I believe that there were not enough data points (there were only 45) for the squad values of newly-promoted clubs to establish a significant relationship between measures of squad value and relegation status/table finish position.
+
+In the master2 data frame, we had 400 data points (and thus more statistical power) which allowed us to establish a highly significant relationship between *SquadValueRank* and table finish position. Consequently, using the master2 data frame, we were also able to identify a statistically significant relationship between *SquadValueRank* and a club's probability of relegation. I see no reason why these relationships would not exist in the subset of newly-promoted clubs if we had more data points within this subset to analyze. 
+
+
+
+***Transfer Market Expenditure during First EPL Season (Newly-Promoted Clubs Only)
+
+```{r}
+NewlyPromotedClubs[-c(6:25)] -> clean 
+
+moneyman <- merge(intermediate, clean, by = c("Team", "Time", "Status", "SpellNumber", "NewlyPromoted"))
+```
+
+
+```{r}
+#Use survival analysis methods to explore the relationship between newly-promoted clubs' TMEFSmillions (Transfer Market Expenditure in First Season in Millions of USD) and Time using Parametric Methods
+
+#Exponential
+m1 = survreg( Surv(Time, Status) ~ TMEFSmillions , dist = "exponential" , data = moneyman )
+#summary(m1)
+
+#Weibull
+m2 = survreg( Surv(Time, Status) ~ TMEFSmillions , dist = "weibull" , data = moneyman )
+#summary(m2)
+
+#Normal
+m3 = survreg( Surv(Time, Status) ~ TMEFSmillions , dist = "gaussian" , data = moneyman )
+#summary(m3)
+
+#Log-normal
+m4 = survreg( Surv(Time, Status) ~ TMEFSmillions , dist = "lognormal" , data = moneyman )
+#summary(m4)
+```
+
+All of the parametric models give a positive coefficient for *TMEFSmillions*, indicating that as a newly-promoted club's transfer market expenditure in their first EPL season increases, so does the time in which they stay in the EPL. This makes sense intuitively. However, none of the coefficients for *TMEFSmillions* in any of the models is statistically significant at the 0.05 level. But, according to the Exponential (p = 0.054) and Weibull (p = 0.051) models, the coefficient for *TMEFSmillions* is bordering on significance as a predictor for EPL survival time. 
+
+
+```{r}
+#Plot estimated survival curve from each parametric model as well as the non-parametric Kaplan-Meier survival curve. Assume the median *TMEFSmillions* value for each club, 24.345.
+
+#median(moneyman$TMEFSmillions)
+
+#Exponential
+curve(1 - pexp(x, 1/exp(1.08245375+0.01374009*24.345)), ylab="Survival Probability", xlab="Time (Seasons)", main = "Survival of Newly-Promoted EPL Clubs", from = 0, to = max(moneyman$Time), ylim=c(0,1),  col = "purple")
+
+#Weibull
+curve( 1 - pweibull( x , shape =  1/0.960334, scale = exp(1.09955581+0.01347769*24.345)) , add=TRUE , col='blue', lty = 2 )
+
+#Normal
+curve( 1 - pnorm( x , mean =  3.18330768+0.03628583*24.345, sd = 4.101648) , add=TRUE , col='red' )
+
+#Log-Normal
+curve(1 - plnorm( x , meanlog =  0.749137982+0.008540924*24.345, sdlog = 1.021327), add = TRUE, col = "green")
+
+#Kaplan-Meier
+KM = survfit(Surv(Time, Status) ~1, data = moneyman)
+lines(KM, col = "black", conf.int = FALSE)
+```
+
+
+```{r}
+#Compare the log-normal survival curves of clubs with varying values of *TMEFSmillions*: lowest transfer market expenditure, median transfer market expenditure, highest transfer market expenditure
+
+curve(1 - plnorm( x , meanlog =  0.749137982+0.008540924*1.25, sdlog = 1.021327), ylab="Survival Probability", xlab="Time (Seasons)", main = "Survival of Newly-Promoted EPL Clubs", from = 0, to = max(moneyman$Time), ylim=c(0,1), col = "green")
+
+curve(1 - plnorm( x , meanlog =  0.749137982+0.008540924*24.345, sdlog = 1.021327), add = TRUE, col = "blue")
+
+curve(1 - plnorm( x , meanlog =  0.749137982+0.008540924*175.01, sdlog = 1.021327), add = TRUE, col = "red")
+```
+
+
+```{r}
+#Compare the log-normal survival curves of clubs with varying values of *TMEFSmillions*: 25th quantile transfer market expenditure, median transfer market expenditure, 75th quantile transfer market expenditure
+
+#quantile(moneyman$TMEFSmillions)
+
+curve(1 - plnorm( x , meanlog =  0.749137982+0.008540924*14.7025, sdlog = 1.021327), ylab="Survival Probability", xlab="Time (Seasons)", main = "Survival of Newly-Promoted PL Clubs (Log-Normal)", from = 0, to = max(moneyman$Time), ylim=c(0,1), col = "green")
+
+curve(1 - plnorm( x , meanlog =  0.749137982+0.008540924*24.345, sdlog = 1.021327), add = TRUE, col = "blue")
+
+curve(1 - plnorm( x , meanlog =  0.749137982+0.008540924*50.2200, sdlog = 1.021327), add = TRUE, col = "red")
+
+legend(x = 12, y = 1, legend = c(14.70, 24.35, 50.22), fill = c("green", "blue", "red"), title = "STME (Millions of USD)")
+```
+
+
+```{r}
+#Coxph model and estimated survival curve for *TMEFSmillions*
+new = data.frame(TMEFSmillions = c(14.7025, 24.345, 50.2200))
+
+mod = coxph(Surv(Time, Status) ~TMEFSmillions, data = moneyman)
+plot(survfit(mod, newdata = new), conf.int = FALSE, col = c("green", "blue", "red"),  ylab="Survival Probability", xlab="Time (Seasons)", main = "Survival of Newly-Promoted PL Clubs (Cox PH)", xlim = c(0, max(moneyman$Time)), ylim=c(0,1))
+
+legend(x = 12, y = 1, legend = c(14.70, 24.35, 50.22), fill = c("green", "blue", "red"), title = "STME (Millions of USD)")
+
+
+#cox.zph(mod)
+```
+
+
+According to the output of the cox.zph model, the PH assumption is valid for *TMEFSmillions* as a predictor of EPL survival time for newly-promoted clubs. 
+
+
+```{r}
+#Evaluate adequacy of each model using graphs of Cox-Snell residuals
+
+#Exponential
+CS = -log( 1 - pexp( moneyman$Time , 1/exp(1.08245375+0.01374009*moneyman$TMEFSmillions) ) )
+
+CoxSnell( CS , moneyman$Status, xlim = c(-2, 2), ylim = c(-4, 4))
+
+
+#Weibull
+CS = -log( 1 - pweibull( moneyman$Time , shape =  1/0.960334, scale = exp(1.09955581+0.01347769*moneyman$TMEFSmillions)) )
+
+CoxSnell( CS , moneyman$Status, xlim = c(-2, 2), ylim = c(-4, 4))
+
+
+#Normal
+CS = -log( 1 - pnorm( moneyman$Time , mean = 3.18330768+0.03628583*moneyman$TMEFSmillions, sd = 4.101648))
+
+CoxSnell( CS , moneyman$Status, xlim = c(-2, 2), ylim = c(-4, 4))
+
+#Log-normal
+CS = -log( 1 - plnorm( moneyman$Time , meanlog =  0.749137982+0.008540924*moneyman$TMEFSmillions, sdlog = 1.021327))
+
+CoxSnell( CS , moneyman$Status, xlim = c(-2, 2), ylim = c(-4, 4))
+```
+
+
+None of the parametric models appears to be an adequate fit for the data (predicting *Time* by using *TMEFSmillions*). However, of the parametric models, the Log-Normal appears to be the best fit for the data.
+
+
+```{r}
+#AIC Comparison of the parametric models
+
+#Exponential
+2*(2 - (-121.6))
+
+#Weibull
+
+2*(3 - (-121.5))
+
+#Normal
+2*(3 - (-146.3))
+
+#Log-Normal
+2*(3 - (-116.5))
+```
+
+According to the AIC scores of each parametric model, the Log-Normal is the best fit for the data. But, as we saw from the graphs of the Cox-Snell residuals, none of the parametric models is an adequate fit for the data. 
+
+
+```{r}
+#Adding FirstSeasonFinish and FirstSeasonRelegated variables to the moneyman data frame
+moneyman %>% 
+  mutate(FirstSeasonFinish = c(16, 17, 19, 9, 13, 10, 19, 16, 15, 18, 
+                               19, 16, 20, 18, 9, 18, 11, 20, 19, 13,
+                               16, 18, 17, 16, 5, 18, 14, 18, 9, 19,
+                               10, 12, 19, 19, 20, 12, 13, 20, 17, 19,
+                               8, 9, 18, 14, 12, 20, 15, 11, 20, 13,
+                               19, 20, 17, 11, 9, 10, 10, 20, 7, 15),
+         FirstSeasonRelegated = as.numeric(FirstSeasonFinish == 18 | FirstSeasonFinish == 19 | FirstSeasonFinish == 20)) -> moneyman
+```
+
+
+Now, we'll see if there is a relationship between newly-promoted clubs' relegation status/table finish position and their transfer market expenditure in their first EPL season.
+
+```{r}
+#Explore the relationship between FirstSeasonRelegated and TMEFSmillions using a linear model
+
+m1 = lm(FirstSeasonRelegated ~ TMEFSmillions, data = moneyman)
+#summary(m1)
+
+
+#Relationship between FirstSeasonFinish and TMEFSmillions  using a linear model
+
+m2 = lm(FirstSeasonFinish ~ TMEFSmillions, data = moneyman)
+#summary(m2)
+```
+
+In m1, the coefficient of *TMEFSmillions* is negative, with a value of -0.002867. The sign of this coefficient tells us that as a newly-promoted club's transfer market expenditure in their first season increases, the probability that club will be relegated in their first season decreases. This relationship is intuitive. But, the p-value for the *TMEFSmillions* coefficient is non-significant, with a value of 0.147.
+
+In m2, the coefficient of *TMEFSmillions* is negative, with a value of -0.009512 The sign of this coefficient indicates that as a newly-promoted club's transfer market expenditure in their first season increases, the predicted table finish position of that club in their first season decreases. This makes intuitive sense. However, the p-value for the *TMEFSmillions* coefficient is non-significant, p = 0.569.
+
+Again, I believe that there were not enough data points (60) for us to establish a significant relationship between the transfer market expenditure of newly-promoted clubs in their first EPL season and clubs' survival times and relegation status/table finish position. In our parametric models of survival time using *TMEFSmillions* as a covariate, both the Exponential and Weibull models estimated coefficients for *TMEFSmillions* that were very close to being significant. I believe that if we had more data points, we would be able to establish that higher transfer market expenditure by newly-promoted clubs in their first EPL season is correlated with longer EPL survival times. 
+
+
+***Style of Play
+
+```{r}
+#Style of Play Data for Newly-Promoted Clubs
+master3 <- merge(StyleofPlay, moneyman, by = c("Team", "Season"))
+
+master3 <- master3[-c(3)]
+```
+
+
+```{r}
+#Initial Exploration of Relationships between Style of Play measures (G, GA, and D) and Table Finish Position using the full Style of Play data frame (400 observations)
+m1 = lm(X. ~ GoalsScored, data = StyleofPlay)
+#summary(m1)
+
+m2 = lm(X. ~ GoalsConceded, data = StyleofPlay)
+#summary(m2)
+
+m3 = lm(X. ~ Draws, data = StyleofPlay)
+#summary(m3)
+```
+
+As expected, *GoalsScored* (in a season) is a significant predictor of table finish position, p = <2e-16. The *GoalsScored* coefficient is -0.30585, indicating that as a team scores more goals in a season, their expected table finish position goes down (i.e., that team finishes higher in the table).
+
+Also as expected, *GoalsConceded* (in a season) is a significant predictor of table finish position, p = <2e-16. The *GoalsConceded* coefficient is 0.3796, indicating that as a team concedes more goals in a season, their expected table finish position goes up (i.e., that team finishes lower in the table).
+
+A little surprisingly, *Draws* (in a season) is also a significant predictor of table finish position, p = 0.000267. The linear model using *Draws* to predict *X.* has an intercept value of 6.9393, indicating that a team which finishes the season with no draws will finish around 7th position in the table. The coefficient on *Draws* in this model is 0.3721, indicating that for each additional draw a team has in a season, their table finish position will increase slightly. I find this to be an interesting result, as draws are not often considered to be a bad result in the EPL, unless a Big Six club (Manchester United, Manchester City, Chelsea, Arsenal, Tottenham, Liverpool) draws against a lesser opponent. 
+
+
+Will these results hold when we look just at newly-promoted clubs?
+
+```{r}
+#Explore the relationship between FirstSeasonRelegated and Style of Play measures using linear models
+
+m1 = lm(FirstSeasonRelegated ~ GoalsScored, data = master3)
+#summary(m1)
+
+m2 = lm(FirstSeasonRelegated ~ GoalsConceded, data = master3)
+#summary(m2)
+
+m3 = lm(FirstSeasonRelegated ~ Draws, data = master3)
+summary(m3)
+```
+
+Perhaps unsurprisingly, when only examining data on newly-promoted EPL clubs, *GoalsScored* by clubs in their first EPL season is a significant predictor of the club's relegation status, p = 0.000838. The coefficient for *GoalsScored* is -0.024556. This tells us that newly-promoted EPL clubs that score more goals in their first season are less likely to be relegated in that season.
+
+Also unsurprising is the fact that *GoalsConceded* by clubs in their first EPL season is a significant predictor of the club's relegation status, p = 9.38e-09. The coefficient for *GoalsConceded* is 0.029461.This tells us that newly-promoted EPL clubs that concede more goals in their first season are more likely to be relegated in that season.
+
+*Draws*, however, was not found to be a significant predictor of newly-promoted EPL club's relegation status in their first EPL season (p = 0.4817). The coefficient for *Draws* is -0.01668, indicating that clubs with more draws are less likely to be relegated. This would make sense because for newly-promoted clubs, earning a draw is almost always a positive result, as these clubs are expected to lose more matches than they win. But, again, from this data, *Draws* is not a significant predictor of relegation status for newly-promoted EPL clubs in their first EPL season. 
+
+```{r}
+#Exploration of the relationship between FirstSeasonFinish and Style of Play measures using linear models
+
+m4 = lm(FirstSeasonFinish ~ GoalsScored, data = master3)
+#summary(m4)
+
+m5 = lm(FirstSeasonFinish ~ GoalsConceded, data = master3)
+#summary(m5)
+
+m6 = lm(FirstSeasonFinish ~ Draws, data = master3)
+#summary(m6)
+```
+
+*GoalsScored* (p = 1.6e-06) and *GoalsConceded* (p = 2.68e-11) are estimated to be significant predictors of a newly-promoted club's table finish position in its first EPL season. *Draws* are found to be non-significant as a predictor of table finish position. The coefficient for *Draws*, 0.05545, is positive, which suggests that newly-promoted clubs with more draws in their first EPL season tend to have higher table finish positions (closer to the bottom). This seems to contradict the coefficient on *Draws* from the linear model using *Draws* to predict *FirstSeasonRelegated*, although neither result was significant. 
+
+
+```{r}
+#Use survival analysis methods to explore the relationship between newly-promoted clubs' Style of Play measures (G, GA, D) and Time using Parametric Methods
+
+#Exponential
+m1 = survreg( Surv(Time, Status) ~ GoalsScored , dist = "exponential" , data = master3 )
+#m1
+#summary(m1)
+
+m2 = survreg( Surv(Time, Status) ~ GoalsConceded , dist = "exponential" , data = master3 )
+#m2
+#summary(m2)
+
+m3 = survreg( Surv(Time, Status) ~ Draws , dist = "exponential" , data = master3 )
+#m3
+#summary(m3)
+
+#Weibull
+m4 = survreg( Surv(Time, Status) ~ GoalsScored , dist = "weibull" , data = master3 )
+#m4
+#summary(m4)
+
+m5 = survreg( Surv(Time, Status) ~ GoalsConceded , dist = "weibull" , data = master3 )
+#m5
+#summary(m5)
+
+m6 = survreg( Surv(Time, Status) ~ Draws , dist = "weibull" , data = master3 )
+#m6
+#summary(m6)
+
+#Normal
+m7 = survreg( Surv(Time, Status) ~ GoalsScored , dist = "gaussian" , data = master3 )
+#m7
+#summary(m7)
+
+m8 = survreg( Surv(Time, Status) ~ GoalsConceded , dist = "gaussian" , data = master3 )
+#m8
+#summary(m8)
+
+m9 = survreg( Surv(Time, Status) ~ Draws , dist = "gaussian" , data = master3 )
+#summary(m9)
+
+#Log-normal
+m10 = survreg( Surv(Time, Status) ~ GoalsScored , dist = "lognormal" , data = master3 )
+#m10
+#summary(m10)
+
+m11 = survreg( Surv(Time, Status) ~ GoalsConceded , dist = "lognormal" , data = master3 )
+#m11
+#summary(m11)
+
+m12 = survreg( Surv(Time, Status) ~ Draws , dist = "lognormal" , data = master3 )
+#m12
+#summary(m12)
+```
+
+According to each parametric model using *GoalsScored* as a predictor of *Time*, a higher number *GoalsScored* by a newly-promoted club in their first EPL season is significantly correlated with increased survival time in the EPL.
+
+According to each parametric model using *GoalsConceded* as a predictor of *Time*, a lower number of *GoalsConceded* by a newly-promoted club in their first EPL season is also significantly correlated with increased survival time in the EPL. One interesting point to note is that in each of the parametric models, the coefficient for *GoalsConceded* was of a higher magnitude than the coefficient for *GoalsScored*, indicating that first season *GoalsConceded* is a stronger predictor of EPL survival time than first season *GoalsScored* for newly-promoted EPL clubs.
+
+None of the parametric models which used *Draws* as a predictor of *Time* found that *Draws* was significantly related to EPL survival time. All of the estimated coefficient for *Draws* were positive (although many were virtually 0), indicating that a higher number of draws in a newly-promoted club's first EPL season could potentially be correlated with longer EPL survival.
+
+
+```{r}
+#GoalsScored vs. Time
+
+#Plot estimated survival curve from each parametric model as well as the non-parametric Kaplan-Meier survival curve. Assume the median *GoalsScored* value for each club, 40.5.
+
+#median(master3$GoalsScored)
+
+#Exponential
+curve(1 - pexp(x, 1/exp(-0.83891138+0.05656611*40.5)), ylab="Survival Probability", xlab="Time (Seasons)", main = "Survival of Newly-Promoted EPL Clubs", from = 0, to = max(NewlyPromotedSquadValuesMaster$Time), ylim=c(0,1),  col = "purple")
+
+#Weibull
+curve( 1 - pweibull( x , shape =  1/0.8954431, scale = exp(-0.79888143+0.05608498*40.5)) , add=TRUE , col='blue' )
+
+#Normal
+curve( 1 - pnorm( x , mean =  -2.4194450+0.1666611*40.5, sd = 3.858594) , add=TRUE , col='red' )
+
+#Log-Normal
+curve(1 - plnorm( x , meanlog =  -0.97002014+0.04904878*40.5, sdlog = 0.9269063), add = TRUE, col = "green")
+
+#Kaplan-Meier
+KM = survfit(Surv(Time, Status) ~1, data = master3)
+lines(KM, col = "black", conf.int = FALSE)
+```
+
+
+```{r}
+#Compare the log-normal survival curves of clubs with varying numbers of *GoalsScored*: lowest number of goals scored, median number of goals scored, highest number of goals scored
+
+curve(1 - plnorm( x , meanlog =  -0.97002014+0.04904878*20, sdlog = 0.9269063), ylab="Survival Probability", xlab="Time (Seasons)", main = "Survival of Newly-Promoted EPL Clubs", from = 0, to = max(NewlyPromotedSquadValuesMaster$Time), ylim=c(0,1), col = "green")
+
+curve(1 - plnorm( x , meanlog =  -0.97002014+0.04904878*40.5, sdlog = 0.9269063), add = TRUE, col = "blue")
+
+curve(1 - plnorm( x , meanlog =  -0.97002014+0.04904878*57, sdlog = 0.9269063), add = TRUE, col = "red")
+```
+
+
+
+```{r}
+#Compare the log-normal survival curves of clubs with varying numbers of *GoalsScored*: 25th quantile number of goals scored, median number of goals scored, 75th quantile number of goals scored
+
+#quantile(master3$GoalsScored)
+
+curve(1 - plnorm( x , meanlog =  -0.97002014+0.04904878*36, sdlog = 0.9269063), ylab="Survival Probability", xlab="Time (Seasons)", main = "Survival of Newly-Promoted PL Clubs (Log-Normal)", from = 0, to = max(NewlyPromotedSquadValuesMaster$Time), ylim=c(0,1), col = "green")
+
+curve(1 - plnorm( x , meanlog =  -0.97002014+0.04904878*41, sdlog = 0.9269063), add = TRUE, col = "blue")
+
+curve(1 - plnorm( x , meanlog =  -0.97002014+0.04904878*46.0, sdlog = 0.9269063), add = TRUE, col = "red")
+
+legend(x = 8, y = 1, legend = c(36, 41, 46), fill = c("green", "blue", "red"), title = "Goals For")
+
+```
+
+
+```{r}
+#Coxph model and estimated survival curve for *GoalsScored*
+new = data.frame(GoalsScored = c(36, 41, 46.0))
+
+mod = coxph(Surv(Time, Status) ~GoalsScored, data = master3)
+plot(survfit(mod, newdata = new), conf.int = FALSE, col = c("green", "blue", "red"),  ylab="Survival Probability", xlab="Time (Seasons)", main = "Survival of Newly-Promoted PL Clubs (Cox PH)", xlim = c(0, max(moneyman$Time)), ylim=c(0,1))
+
+legend(x = 15, y = 1, legend = c(36, 41, 46), fill = c("green", "blue", "red"), title = "Goals For")
+
+
+#cox.zph(mod)
+```
+
+According to the output of the cox.zph model, the PH assumption is not valid for *GoalsScored* as a predictor of newly-promoted clubs' EPL survival time.
+
+
+```{r}
+#Evaluate adequacy of each model using graphs of Cox-Snell residuals
+
+#Exponential
+CS = -log( 1 - pexp( master3$Time , 1/exp(-0.83891138+0.05656611*master3$GoalsScored) ) )
+
+CoxSnell( CS , master3$Status, xlim = c(-4, 2), ylim = c(-4, 4))
+
+
+#Weibull
+CS = -log( 1 - pweibull( master3$Time , shape =  1/0.8954431, scale = exp(-0.79888143+0.05608498*master3$GoalsScored)) )
+
+CoxSnell( CS , master3$Status, xlim = c(-4, 2), ylim = c(-4, 4))
+
+
+#Normal
+CS = -log( 1 - pnorm( master3$Time , mean = -2.4194450+0.1666611*master3$GoalsScored, sd = 3.858594))
+
+CoxSnell( CS , master3$Status, xlim = c(-4, 2), ylim = c(-4, 4))
+
+#Log-normal
+CS = -log( 1 - plnorm( master3$Time , meanlog =  -0.97002014+0.04904878*master3$GoalsScored, sdlog = 0.9269063))
+
+CoxSnell( CS , master3$Status, xlim = c(-4, 2), ylim = c(-4, 4))
+```
+
+Of the parametric models that use *GoalsScored* as a predictor of *Time*, it appears that the Log-Normal model is the best fit for the data. All of the parametric models seem to be adequate, however.
+
+```{r}
+#AIC Comparison of the parametric models
+
+#Exponential
+2*(2 - (-119.2))
+
+#Weibull
+
+2*(3 - (-118.6))
+
+#Normal
+2*(3 - (-144.2))
+
+#Log-Normal
+2*(3 - (-112.7))
+```
+
+According to the AIC scores for each parametric model using *GoalsScored* to predict *Time*, the Log-Normal appears to be the best fit for the data.
+
+
+```{r}
+#GoalsConceded vs. Time
+
+#Plot estimated survival curve from each parametric model as well as the non-parametric Kaplan-Meier survival curve. Assume the median *GoalsConceded* value for each club, 59.
+
+#median(master3$GoalsConceded)
+
+#Exponential
+curve(1 - pexp(x, 1/exp(5.5455035-0.0678964*59)), ylab="Survival Probability", xlab="Time (Seasons)", main = "Survival of Newly-Promoted EPL Clubs", from = 0, to = max(NewlyPromotedSquadValuesMaster$Time), ylim=c(0,1),  col = "purple")
+
+#Weibull
+curve( 1 - pweibull( x , shape =  1/0.7893234, scale = exp(5.47969785-0.06620552*59)) , add=TRUE , col='blue' )
+
+#Normal
+curve( 1 - pnorm( x , mean =  15.9784291-0.1902803*59, sd = 3.636391) , add=TRUE , col='red' )
+
+#Log-Normal
+curve(1 - plnorm( x , meanlog =  4.41019556-0.05554701*59, sdlog = 0.8370236), add = TRUE, col = "green")
+
+#Kaplan-Meier
+KM = survfit(Surv(Time, Status) ~1, data = master3)
+lines(KM, col = "black", conf.int = FALSE)
+```
+
+
+```{r}
+#Compare the log-normal survival curves of clubs with varying numbers of *GoalsConceded*: lowest number of goals conceded, median number of goals conceded, highest number of goals conceded
+
+#quantile()
+
+curve(1 - plnorm( x , meanlog =  4.41019556-0.05554701*39, sdlog = 0.8370236), ylab="Survival Probability", xlab="Time (Seasons)", main = "Survival of Newly-Promoted EPL Clubs", from = 0, to = max(NewlyPromotedSquadValuesMaster$Time), ylim=c(0,1), col = "green")
+
+curve(1 - plnorm( x , meanlog =  4.41019556-0.05554701*59, sdlog = 0.8370236), add = TRUE, col = "blue")
+
+curve(1 - plnorm( x , meanlog =  4.41019556-0.05554701*89, sdlog = 0.8370236), add = TRUE, col = "red")
+```
+
+
+
+```{r}
+#Compare the log-normal survival curves of clubs with varying numbers of *GoalsConceded*: 25th quantile number of goals conceded, median number of goals conceded, 75th quantile number of goals conceded
+
+#quantile(master3$GoalsConceded)
+
+curve(1 - plnorm( x , meanlog =  4.41019556-0.05554701*53, sdlog = 0.8370236), ylab="Survival Probability", xlab="Time (Seasons)", main = "Survival of Newly-Promoted PL Clubs (Log-Normal)", from = 0, to = max(NewlyPromotedSquadValuesMaster$Time), ylim=c(0,1), col = "green")
+
+curve(1 - plnorm( x , meanlog =  4.41019556-0.05554701*59, sdlog = 0.8370236), add = TRUE, col = "blue")
+
+curve(1 - plnorm( x , meanlog =  4.41019556-0.05554701*67, sdlog = 0.8370236), add = TRUE, col = "red")
+
+legend(x = 8, y = 1, legend = c(53, 59, 67), fill = c("green", "blue", "red"), title = "Goals Against")
+
+```
+
+
+```{r}
+#Coxph model and estimated survival curve for *GoalsConceded*
+new = data.frame(GoalsConceded = c(53, 59, 67))
+
+mod = coxph(Surv(Time, Status) ~GoalsConceded, data = master3)
+plot(survfit(mod, newdata = new), conf.int = FALSE, col = c("green", "blue", "red"),  ylab="Survival Probability", xlab="Time (Seasons)", main = "Survival of Newly-Promoted PL Clubs (Cox PH)", xlim = c(0, max(moneyman$Time)), ylim=c(0,1))
+
+legend(x = 14, y = 1, legend = c(53, 59, 67), fill = c("green", "blue", "red"), title = "Goals Against")
+
+
+#cox.zph(mod)
+```
+
+
+According to the output of the cox.zph function, the PH assumption is valid for *GoalsConceded* as a predictor of newly-promoted clubs' EPL survival time.
+
+
+```{r}
+#Evaluate adequacy of each model using graphs of Cox-Snell residuals
+
+#Exponential
+CS = -log( 1 - pexp( master3$Time , 1/exp(5.5455035-0.0678964*master3$GoalsConceded) ) )
+
+CoxSnell( CS , master3$Status, xlim = c(-4, 2), ylim = c(-4, 4))
+
+
+#Weibull
+CS = -log( 1 - pweibull( master3$Time , shape =  1/0.7893234, scale = exp(5.47969785-0.06620552*master3$GoalsConceded)) )
+
+CoxSnell( CS , master3$Status, xlim = c(-4, 2), ylim = c(-4, 4))
+
+
+#Normal
+CS = -log( 1 - pnorm( master3$Time , mean = 15.9784291-0.1902803*master3$GoalsConceded, sd = 3.636391))
+
+CoxSnell( CS , master3$Status, xlim = c(-4, 2), ylim = c(-4, 4))
+
+#Log-normal
+CS = -log( 1 - plnorm( master3$Time , meanlog =  4.41019556-0.05554701*master3$GoalsConceded, sdlog = 0.8370236))
+
+CoxSnell( CS , master3$Status, xlim = c(-4, 2), ylim = c(-4, 4))
+```
+
+All of the parametric models that use *GoalsConceded* as a predictor of *Time* appear to be adequate. Of the parametric models, the Log-Normal appears to be the best fit for the data, however.
+
+
+```{r}
+#AIC Comparison of the parametric models
+
+#Exponential
+2*(2 - (-112.7))
+
+#Weibull
+
+2*(3 - (-110.5))
+
+#Normal
+2*(3 - (-139.9))
+
+#Log-Normal
+2*(3 - (-106.1))
+```
+
+According to the AIC values for each parametric model using *GoalsConceded* as a covariate for *Time*, the Log-Normal model is the best fit for the data. 
+
+
+
+
+***Interaction Effects?
+
+###SquadValueMillions/SquadValueRank and TMEFSmillions
+
+```{r}
+#Add SquadValue to the moneyman data frame
+merge(moneyman, NewlyPromotedSquadValuesMaster, by = c("Team", "Season", "Time", "Status", "SpellNumber", "NewlyPromoted", "FirstSeasonFinish", "FirstSeasonRelegated")) -> interacting
+
+interacting[-c(12)] -> interacting
+```
+
+
+```{r}
+#Relationship between SquadValueMillions/SquadValueRank and TMEFSmillions?
+explore = lm(SquadValueMillions ~ TMEFSmillions, data = interacting)
+#summary(explore)
+
+explore2 = lm(SquadValueRank ~ TMEFSmillions, data = interacting)
+#summary(explore2)
+
+
+
+#Non-significant predictors. All of these are non-significant.
+explore3 = lm(FirstSeasonFinish ~ SquadValueMillions + TMEFSmillions, data = interacting)
+#summary(explore3)
+
+explore4 = lm(FirstSeasonFinish ~ SquadValueRank + TMEFSmillions, data = interacting)
+#summary(explore4)
+
+explore5 = lm(FirstSeasonFinish ~ SquadValueMillions + TMEFSmillions + SquadValueMillions:TMEFSmillions, data = interacting)
+#summary(explore5)
+
+explore6 = lm(FirstSeasonFinish ~ SquadValueRank + TMEFSmillions + SquadValueRank:TMEFSmillions, data = interacting)
+#summary(explore6)
+```
+
+Unsurprisingly, *TMEFSmillions* is significantly related to *SquadValueMillions* in the data frame of newly-promoted EPL clubs (p = 1.45e-09). The intercept of this model is 40.5188, indicating that a newly-promoted club that spent no money in the transfer market in their first EPL season would have a predicted squad value of around $40.5 million. The coefficient of *TMEFSmillions* in this model is 1.1168, indicating that for each addition million dollars a newly-promoted club spends in the transfer market, that club can expect their squad value to increase by 1.1168 million dollars.
+
+The relationship between *SquadValueRank* and *TMEFSmillions* was not found to be significant, on the other hand. (Perhaps because there were not enough data points in the data frame.)
+
+
+```{r}
+#Log-Normal parametric model for SquadValueMillions/SquadValueRank and TMEFSmillions as covariates for Time
+m1 = survreg(Surv(Time, Status) ~ SquadValueMillions + TMEFSmillions, dist = "lognormal", data = interacting)
+#summary(m1)
+
+m2 = survreg(Surv(Time, Status) ~ SquadValueRank + TMEFSmillions, dist = "lognormal", data = interacting)
+#summary(m2)
+
+#Parametric models for SquadValueMillions, TMEFSmillions, and their interaction term as covariates for Time
+m3 = survreg(Surv(Time, Status) ~ SquadValueMillions + TMEFSmillions + SquadValueMillions:TMEFSmillions, dist = "lognormal", data = interacting)
+#summary(m3)
+
+m4 = survreg(Surv(Time, Status) ~ SquadValueMillions + TMEFSmillions + SquadValueMillions:TMEFSmillions, dist = "gaussian", data = interacting)
+#summary(m4)
+
+m5 = survreg(Surv(Time, Status) ~ SquadValueMillions + TMEFSmillions + SquadValueMillions:TMEFSmillions, dist = "exponential", data = interacting)
+#summary(m5)
+
+m6 = survreg(Surv(Time, Status) ~ SquadValueMillions + TMEFSmillions + SquadValueMillions:TMEFSmillions, dist = "weibull", data = interacting)
+#summary(m6)
+```
+
+When using both *SquadValueMillions* and *TMEFSmillions* as covariates for *Time*, neither was found to be a significant predictor of the EPL survival time of newly-promoted clubs. A log-normal regression model using *SquadValueRank* and *TMEFSmillions* as covariates for *Time* also found neither to be a significant predictor of survival. 
+
+However, all four parametric models which used *SquadValueMillions*, *TMEFSmillions*, and their interaction term, *SquadValueMillions:TMEFSmillions*, as covariates for *Time* found *TMEFSmillions* to be a significant predictor of increased survival time (as *TMEFSmillions* increases, so does *Time*). So, holding a newly-promoted club's squad value in their first EPL season constant, increasing that club's transfer market expenditure during their first season will (significantly) predict increased EPL survival time. 
+
+The Weibull model also found the interaction term *SquadValueMillions:TMEFSmillions* to a be a significant predictor of survival time (p = 0.022), with a small negative coefficient of -1.63e-04.  
+
+
+###Goals Scored, Goals Conceded, and Draws
+
+```{r}
+#Use full StyleofPlay data frame to explore interaction effects between style of play measures as predictors of table finish position
+
+#GoalsScored and GoalsConceded
+m1 = lm(X. ~ GoalsScored + GoalsConceded, data = StyleofPlay)
+#summary(m1)
+
+#GoalsScored, GoalsConceded, and their interaction
+m2 = lm(X. ~ GoalsScored + GoalsConceded + GoalsScored:GoalsConceded, data = StyleofPlay)
+#summary(m2)
+
+#GoalsScored, GoalsConceded, and Draws
+m3 = lm(X. ~ GoalsScored + GoalsConceded + Draws, data = StyleofPlay)
+#summary(m2)
+```
+
+m1: In the linear model using *GoalsScored* and *GoalsConceded* as covariates for table finish position *X.*, both covariates were found to be significant, p = < 2e-16 and p = < 2e-16, respectively. *GoalsConceded* had a coefficient of a higher magnitude, 0.240333, than *GoalsScored*, -0.179988. 
+
+m2: In the linear model using *GoalsScored*, *GoalsConceded*, and their interaction term, *GoalsScored:GoalsConceded*, as covariates for *X.*, only *GoalsConceded* (p = < 2e-16) and *GoalsScored:GoalsConceded* (p = 5.94e-11) were found to be significant predictors of table finish position. This is an interesting result. 
+
+m3: In the linear model using *GoalsScored*, *GoalsConceded*, and *Draws* as covariates for *X.*, only *GoalsScored* and *GoalsConceded* were found to be significant predictors of table finish position. 
+
+
+```{r}
+#More exploration of Styles of Play measures and interactions as covariates for table finish position
+m1 = lm(X. ~ GoalsScored + GoalsConceded + Draws + GoalsConceded:Draws, data = StyleofPlay)
+#summary(m1)
+
+m2 = lm(X. ~ GoalsScored + GoalsConceded + Draws + GoalsScored:Draws, data = StyleofPlay)
+#summary(m2)
+
+m3 = lm(X. ~ GoalsScored + GoalsConceded + Draws + GoalsScored:Draws + GoalsConceded:Draws, data = StyleofPlay)
+#summary(m3)
+```
+
+In all three linear models, all of the covariates and interaction terms examined were found to be significant predictors of table finish position. The only exception is in the m3: *Draws* is non-significant.
+
+(I'm not really sure what these results are telling me or if they are valuable or not.)
+
+
+```{r}
+#Explore the relationship between style of play measures and their interactions on the survival time of newly-promoted EPL clubs using parametric (log-normal) models and the master3 data frame
+m1 = survreg(Surv(Time, Status) ~ GoalsScored + GoalsConceded, dist = "lognormal", data = master3)
+#summary(m1)
+
+m2 = survreg(Surv(Time, Status) ~ GoalsScored + GoalsConceded + GoalsScored:GoalsConceded, dist = "lognormal", data = master3)
+#summary(m2)
+
+m3 = survreg(Surv(Time, Status) ~ GoalsScored + GoalsConceded + Draws, dist = "lognormal", data = master3)
+#summary(m3)
+
+m4 = survreg(Surv(Time, Status) ~ GoalsConceded + Draws + GoalsConceded:Draws, dist = "lognormal", data = master3)
+#summary(m4)
+
+m5 = survreg(Surv(Time, Status) ~ GoalsScored + Draws + GoalsScored:Draws, dist = "lognormal", data = master3)
+#summary(m5)
+
+m6 = survreg(Surv(Time, Status) ~ GoalsScored + GoalsConceded + Draws + GoalsConceded:Draws, dist = "lognormal", data = master3)
+#summary(m6)
+
+m7 = survreg(Surv(Time, Status) ~ GoalsScored + GoalsConceded + Draws + GoalsScored:Draws, dist = "lognormal", data = master3)
+#summary(m7)
+```
+
+m1: In the Log-Normal model using *GoalsScored* (p = 0.0041) and *GoalsConceded* (p = 1e-06) as covariates for *Time*, both were found to be significant predictors of the survival time of newly-promoted EPL clubs. Once again, *GoalsConceded* (-0.04867)  had a coefficient of slightly greater magnitude that that of *GoalsScored* (0.03545). 
+
+m2: In the Log-Normal model using *GoalsScored*, *GoalsConceded*, and their interaction *GoalsScored:GoalsConceded*, none of the covariates were found to be significant predictors of the survival time of newly-promoted EPL clubs.
+
+m3: In the Log-Normal model using *GoalsScored*, *GoalsConceded*, and *Draws*, only *GoalsScored* (p = 0.0039) and *GoalsConceded* (1e-06) were found to be significant predictors of the survival time of newly-promoted EPL clubs.
+
+m4: In this model, which used *GoalsConceded*, *Draws*, and their interaction *GoalsConceded:Draws* as predictors of *Time*, none of the covariates were found to be significant.
+
+m5: Using *GoalsScored*, *Draws*, and their interaction *GoalsScored:Draws* as covariates for survival time, none of the covariates were found to be significant.
+
+m6: Using *GoalsScored*, *GoalsConceded*, *Draws*, and *GoalsConceded:Draws* as covariates for *Time*, only *GoalsScored* (p = 0.0024) was found to be a significant predictor of EPL survival time.
+
+m7: Using *GoalsScored*, *GoalsConceded*, *Draws*, and *GoalsScored:Draws* as covariates for *Time*, *GoalsConceded* (p = 3.4e-08), *Draws* (p = 0.0222), and *GoalsScored:Draws* (p = 0.0244) were found to be significant predictors of EPL survival time. 
+
+
+Taken all together, these results seem like a mixed bag. The only conclusion that I would feel comfortable making from these models is that *GoalsConceded* seems to be a slightly stronger predictor than *GoalsScored* of table finish position (*X.*) and survival time of newly-promoted EPL clubs. But, both are valuable predictors of both table finish position and survival time of newly-promoted EPL clubs (obviously). 
+
+
+
+***Time-Dependent Covariate Exploration:SquadValue and SquadValueRank
+
+```{r}
+#TVC Exploration. Create new data frame to send to Victor
+NewlyPromotedSquadValuesMaster3 <- merge(NewlyPromotedSquadValuesMaster, StyleofPlay, by = c("Team", "Season"))
+
+NewlyPromotedSquadValuesMaster4 <- merge(NewlyPromotedSquadValuesMaster3, moneyman, by = c("Team", "Season", "Time", "Status", "SpellNumber", "NewlyPromoted", "FirstSeasonFinish", "FirstSeasonRelegated"))
+
+NewlyPromotedSquadValuesMaster5 <- NewlyPromotedSquadValuesMaster4[-c(11, 12, 15)]
+
+save(NewlyPromotedSquadValuesMaster5, file = "NewlyPromotedClubsMaster.RData")
+```
+
+
+```{r}
+#Create TVCanalysis1 data frame for analysis of time-dependency in *SquadValue*, *SquadValueRank*, *GoalsScored*, and *GoalsConceded* covariates
+NewlyPromotedTVC = read.csv("/Users/Will/Desktop/Survival\ Analysis/Final\ Project/NewlyPromotedTVC.csv")
+
+TVCanalysis <- merge(NewlyPromotedTVC, SquadValues, by = c("Team", "Season"))
+
+TVCanalysis <- TVCanalysis[-c(12, 13, 14, 15, 17)]
+
+TVCanalysis %>% 
+  rename(SquadValueMillions = SquadValueMillions.y) -> TVCanalysis
+
+TVCanalysis1 <- merge(TVCanalysis, master2, by = c("Team", "Season", "SquadValueMillions"))
+
+TVCanalysis1 <- TVCanalysis1[-c(19)]
+```
+
+
+###TVC Analysis
+
+
+**SquadValue and SquadValueRank**
+
+```{r}
+#SquadValue TVC analysis
+m1 = coxph(Surv(start, stop, status.time) ~ SquadValueMillions, data = TVCanalysis1)
+#m1
+
+#SquadValueRank TVC analysis
+
+m2 = coxph(Surv(start, stop, status.time) ~ SquadValueRank, data = TVCanalysis1)
+#m2
+```
+
+Based on the outputs of these two coxph functions, there is not evidence to suggest that there is any effect of a newly-promoted club's *SquadValueMillions* or *SquadValueRank* in a certain season on their hazard of relegation.
+
+```{r}
+#Time-varying effects?
+m1 = coxph(Surv(start, stop, status.time) ~ SquadValueMillions + SquadValueMillions:stop, data = TVCanalysis1)
+#m1
+
+m2 = coxph(Surv(start, stop, status.time) ~ SquadValueRank + SquadValueRank:stop, data = TVCanalysis1)
+#m2
+```
+
+Based on the output of these two coxph models, there is not evidence to suggest that there is a time-varying effect of a newly-promoted club's *SquadValueMillions* or *SquadValueRank* on that club's hazard of relegation.
+
+
+**GoalsScored, GoalsConceded, and Draws**
+
+```{r}
+#Goals Scored
+m1 = coxph(Surv(start, stop, status.time) ~GoalsScored, data = TVCanalysis1)
+#m1
+
+#Goals Conceded
+m2 = coxph(Surv(start, stop, status.time) ~GoalsConceded, data = TVCanalysis1)
+#m2
+
+#Draws
+m3 = coxph(Surv(start, stop, status.time) ~Draws, data = TVCanalysis1)
+#m3
+```
+
+Based on the outputs of these coxph models, there is evidence to suggest that there is an effect of a club's *GoalsScored* and *GoalsConceded* in a certain season on the club's hazard of relegation. As expected, a higher number of *GoalsScored* decreases a club's hazard of relegation, while a higher number of *GoalsConceded* increases a club's hazard of relegation.
+
+There is not evidence to suggest that there is any effect of a club's *Draws* in a certain season on the club's hazard of relegation. 
+
+```{r}
+#Time-varying effects?
+m1 = coxph(Surv(start, stop, status.time) ~ GoalsScored + GoalsScored:stop, data = TVCanalysis1)
+#m1
+
+m2 = coxph(Surv(start, stop, status.time) ~ GoalsConceded + GoalsConceded:stop, data = TVCanalysis1)
+#m2
+
+m3 = coxph(Surv(start, stop, status.time) ~Draws + Draws:stop, data = TVCanalysis1)
+#m3
+```
+
+From the outputs of these three coxph models, there is no evidence to suggest that there is a time-varying impact for *GoalsScored*, *GoalsConceded*, or *Draws* on the hazard of relegation. (The impact almost certainly stays the same over time for *GoalsScored* and *GoalsConceded*.)
+
+
+**TMEFSmillions***
+
+```{r}
+#Time-varying effect?
+m1 = coxph(Surv(start, stop, status.time) ~TMEFSmillions + TMEFSmillions:stop, data = TVCanalysis1)
+#m1
+```
+
+From the output of this coxph model, there is no evidence to suggest a time-varying impact for the covariate *TMEFSmillions* on the hazard of relegation. 
+
+
+###Style of Play: Newly-Promoted EPL Clubs in their Championship promotion season 
+
+```{r}
+#Create data frame with Style of Play measures (*GoalsScored*, *GoalsConceded*, and *Draws*) of newly-promoted EPL in their Championship promotion seasons
+
+ChampionshipPromotion = data.frame(Team = c("Ipswich Town", "Sunderland", "Sunderland", "Aston Villa", "Charlton Athletic", "Southampton", "Newcastle United", "Newcastle United", "Leicester City", "Leicester City", "Middlesbrough", "West Ham United", "West Ham United", "Derby County", "Manchester City", "Manchester City", "Blackburn Rovers", "Fulham", "Fulham", "Bolton Wanderers", "Birmingham City", "Birmingham City", "Birmingham City", "West Brownwich Albion", "West Brownwich Albion", "West Brownwich Albion", "West Brownwich Albion", "Portsmouth", "Wolverhampton Wanderers", "Wolverhampton Wanderers", "Wolverhampton Wanderers", "Crystal Palace", "Crystal Palace", "Norwich City", "Norwich City", "Norwich City", "Norwich City", "Wigan Athletic", "Reading", "Reading", "Sheffield United", "Sheffield United", "Watford", "Watford", "Stoke City", "Hull City", "Hull City", "Hull City", "Burnley", "Burnley", "Burnley", "Blackpool", "Swansea City", "Queens Park Rangers", "Queens Park Rangers", "Cardiff City", "Cardiff City", "AFC Bournemouth", "Brighton & Hove Albion", "Huddersfield Town"), 
+                                   PromotionSeason = c("1999/2000", "2004/05", "2006/07", "2018/19", "1999/2000", "2011/12", "2009/10", "2016/17", "2002/03", "2013/14", "2015/16", "2004/05", "2011/12", "2006/07", "1999/2000", "2001/02", "2000/01", "2000/01", "2017/18", "2000/01", "2001/02", "2006/07", "2008/09", "2001/02", "2003/04", "2007/08", "2009/10", "2002/03", "2002/03", "2008/09", "2017/18", "2003/04", "2012/13", "2003/04", "2010/11", "2014/15", "2018/19", "2004/05", "2005/06", "2011/12", "2005/06", "2018/19", "2005/06", "2014/15", "2007/08", "2007/08", "2012/13", "2015/16", "2008/09", "2013/14", "2015/16", "2009/10", "2010/11", "2010/11", "2013/14", "2012/13", "2017/18", "2014/15", "2016/17", "2016/17"), 
+                                   Season = c("2000/01", "2005/06", "2007/08", "2019/20", "2000/01", "2012/13", "2010/11", "2017/18", "2003/04", "2014/15", "2016/17", "2005/06", "2012/13", "2007/08", "2000/01", "2002/03", "2001/02", "2001/02", "2018/19", "2001/02", "2002/03", "2007/08", "2009/10", "2002/03", "2004/05", "2008/09", "2010/11", "2003/04", "2003/04", "2009/10", "2018/19", "2004/05", "2013/14", "2004/05", "2011/12", "2015/16", "2019/20", "2005/06", "2006/07", "2012/13", "2006/07", "2019/20", "2006/07", "2015/16", "2008/09", "2008/09", "2013/14", "2016/17", "2009/10", "2014/15", "2016/17", "2010/11", "2011/12", "2011/12", "2014/15", "2013/14", "2018/19", "2015/16", "2017/18", "2017/18"),
+                                   PSGoalsScored = c(71, 75, 76, 82, 79, 85, 90, 85, 73, 83, 63, 66, 81, 62, 78, 108, 76, 90, 79, 76, 70, 67, 54, 61, 64, 88, 89, 97, 81, 80, 82, 71, 73, 79, 83, 88, 93, 79, 99, 69, 76, 78, 77, 91, 69, 65, 61, 69, 72, 72, 72, 74, 69, 71, 60, 72, 69, 98, 74, 56),
+                                   PSGoalsConceded = c(42, 41, 47, 61, 45, 46, 35, 40, 40, 43, 31, 56, 48, 46, 40, 52, 39, 32, 46, 45, 49, 42, 37, 29, 42, 55, 48, 45, 44, 52, 39, 61, 62, 39, 58, 48, 57, 35, 32, 41, 46, 41, 53, 50, 55, 47, 52, 35, 60, 37, 35, 58, 42, 32, 44, 45, 39, 45, 40, 58),
+                                   PSDraws = c(12, 7, 7, 16, 10, 10, 12, 7, 14, 9, 11, 10, 14, 9, 11, 6, 13, 11, 13, 15, 13, 8, 14, 8, 11, 12, 13, 11, 16, 9, 9, 10, 15, 10, 15, 11, 13, 12, 13, 8, 12, 11, 15, 8, 16, 12, 7, 11, 13, 15, 15, 13, 8, 16, 11, 12, 9, 12, 9, 6))
+
+ChampionshipSOP <- merge(ChampionshipPromotion, moneyman, by = c("Team", "Season"))
+
+ChampionshipSOP <- ChampionshipSOP[-c(10, 11)]
+```
+
+
+```{r}
+#Log-normal regression models using Promotion Season Style of Play measures
+
+#GoalsScored
+m1 = survreg(Surv(Time, Status) ~ PSGoalsScored, dist = "lognormal", data = ChampionshipSOP)
+#summary(m1)
+
+#GoalsConceded
+m2 = survreg(Surv(Time, Status) ~PSGoalsConceded, dist = "lognormal", data = ChampionshipSOP)
+#summary(m2)
+
+#Draws
+m3 = survreg(Surv(Time, Status) ~PSDraws, dist = "lognormal", data = ChampionshipSOP)
+#summary(m3)
+```
+
+m1: A newly-promoted EPL club's *PSGoalsScored* in their Championship promotion season is significantly related to EPL survival time (p = 0.0023). The *PSGoalsScored* coefficient is 0.0377, indicating that a higher number of *PSGoalsScored* in the Championship promotion season is predictive of longer EPL survival times.
+
+
+```{r}
+#Compare the log-normal survival curves of clubs with varying numbers of *PSGoalsScored*: 25th quantile number of goals scored, median number of goals scored, 75th quantile number of goals scored
+
+#quantile(ChampionshipSOP$PSGoalsScored)
+
+curve(1 - plnorm( x , meanlog =  -1.8348+0.0377*70, sdlog = 0.96), ylab="Survival Probability", xlab="Time (Seasons)", main = "Survival of Newly-Promoted PL Clubs (Log-Normal)", from = 0, to = max(NewlyPromotedSquadValuesMaster$Time), ylim=c(0,1), col = "green")
+
+curve(1 - plnorm( x , meanlog =  -1.8348+0.0377*76, sdlog = 0.96), add = TRUE, col = "blue")
+
+curve(1 - plnorm( x , meanlog =  -1.8348+0.0377*82, sdlog = 0.96), add = TRUE, col = "red")
+
+legend(x = 8, y = 1, legend = c(70, 76, 82), fill = c("green", "blue", "red"), title = "Goals For")
+
+```
+
+
+```{r}
+#Coxph model and estimated survival curve for *PSGoalsScored*
+new = data.frame(PSGoalsScored = c(70, 76, 82))
+
+mod = coxph(Surv(Time, Status) ~PSGoalsScored, data = ChampionshipSOP)
+plot(survfit(mod, newdata = new), conf.int = FALSE, col = c("green", "blue", "red"),  ylab="Survival Probability", xlab="Time (Seasons)", main = "Survival of Newly-Promoted PL Clubs (Cox PH)", xlim = c(0, max(moneyman$Time)), ylim=c(0,1))
+
+legend(x = 15, y = 1, legend = c(70, 76, 82), fill = c("green", "blue", "red"), title = "Goals For")
+
+
+#cox.zph(mod)
+```
+
+According to the output of the cox.zph function, the PH assumption is valid for *PSGoalsScored* as a predictor for newly-promoted clubs' EPL survival time. 
+
+
+m2: A newly-promoted EPL club's *PSGoalsConceded* in their Championship promotion season is not significantly related to their EPL survival time (p = 0.90).
+
+
+```{r}
+#Compare the log-normal survival curves of clubs with varying numbers of *PSGoalsConceded*: 25th quantile number of goals conceded, median number of goals conceded, 75th quantile number of goals conceded
+
+#quantile(ChampionshipSOP$PSGoalsConceded)
+
+curve(1 - plnorm( x , meanlog =  0.95411+0.00217*39, sdlog = 1.04), ylab="Survival Probability", xlab="Time (Seasons)", main = "Survival of Newly-Promoted PL Clubs (Log-Normal)", from = 0, to = max(NewlyPromotedSquadValuesMaster$Time), ylim=c(0,1), col = "green")
+
+curve(1 - plnorm( x , meanlog =  0.95411+0.00217*45, sdlog = 1.04), add = TRUE, col = "blue")
+
+curve(1 - plnorm( x , meanlog =  0.95411+0.00217*51, sdlog = 1.04), add = TRUE, col = "red")
+
+legend(x = 8, y = 1, legend = c(39, 45, 51), fill = c("green", "blue", "red"), title = "Goals Against")
+
+```
+
+
+
+```{r}
+#Coxph model and estimated survival curve for *PSGoalsConceded*
+new = data.frame(PSGoalsConceded = c(39, 45, 51))
+
+mod = coxph(Surv(Time, Status) ~PSGoalsConceded, data = ChampionshipSOP)
+plot(survfit(mod, newdata = new), conf.int = FALSE, col = c("green", "blue", "red"),  ylab="Survival Probability", xlab="Time (Seasons)", main = "Survival of Newly-Promoted PL Clubs (Cox PH)", xlim = c(0, max(moneyman$Time)), ylim=c(0,1))
+
+legend(x = 14, y = 1, legend = c(39, 45, 51), fill = c("green", "blue", "red"), title = "Goals Against")
+
+#cox.zph(mod)
+```
+
+According to the output of the cox.zph function, the PH assumption is valid for *PSGoalsConceded* as a predictor of newly-promoted clubs' EPL survival time. 
+
+m3: A newly-promoted EPL club's *PSDraws* in their Championship promotion season is not significantly related to their EPL survival time (p = 0.599).
