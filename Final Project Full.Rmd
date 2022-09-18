@@ -18,17 +18,17 @@ library(survival)
 
 ```{r}
 #Read in data from Kaggle dataset
-season0708 <- read.csv("~/Desktop/Survival Analysis/Final Project/epl20072008.csv")
+season0708 <- read.csv("~/Desktop/finalproject/epl20072008.csv")
 season0708 <- season0708[-c(11:13)]
-season0809 <- read.csv("~/Desktop/Survival Analysis/Final Project/epl20082009.csv")
-season0910 <- read.csv("~/Desktop/Survival Analysis/Final Project/epl20092010.csv")
-season1011 <- read.csv("~/Desktop/Survival Analysis/Final Project/epl20102011.csv")
-season1112 <- read.csv("~/Desktop/Survival Analysis/Final Project/epl20112012.csv")
-season1213 <- read.csv("~/Desktop/Survival Analysis/Final Project/epl20122013.csv")
-season1314 <- read.csv("~/Desktop/Survival Analysis/Final Project/epl20132014.csv")
-season1415 <- read.csv("~/Desktop/Survival Analysis/Final Project/epl20142015.csv")
-season1516 <- read.csv("~/Desktop/Survival Analysis/Final Project/epl20152016.csv")
-season1617 <- read.csv("~/Desktop/Survival Analysis/Final Project/epl20162017.csv")
+season0809 <- read.csv("~/Desktop/finalproject/epl20082009.csv")
+season0910 <- read.csv("~/Desktop/finalproject/epl20092010.csv")
+season1011 <- read.csv("~/Desktop/finalproject/epl20102011.csv")
+season1112 <- read.csv("~/Desktop/finalproject/epl20112012.csv")
+season1213 <- read.csv("~/Desktop/finalproject/epl20122013.csv")
+season1314 <- read.csv("~/Desktop/finalproject/epl20132014.csv")
+season1415 <- read.csv("~/Desktop/finalproject/epl20142015.csv")
+season1516 <- read.csv("~/Desktop/finalproject/epl20152016.csv")
+season1617 <- read.csv("~/Desktop/finalproject/epl20162017.csv")
 ```
 
 
@@ -109,8 +109,6 @@ save(SeasonFinish, file = "SeasonFinish2.RData")
 
 ```{r}
 #Manual Creation of the variable for "Transfer Market Expenditure in First EPL Season". Uses "data" dataframe from EPLspells (2).Rmd
-
-#Comment
 
 data %>% 
 #filters to only newly-promoted EPL clubs
@@ -1239,7 +1237,7 @@ save(NewlyPromotedSquadValuesMaster5, file = "NewlyPromotedClubsMaster.RData")
 
 ```{r}
 #Create TVCanalysis1 data frame for analysis of time-dependency in *SquadValue*, *SquadValueRank*, *GoalsScored*, and *GoalsConceded* covariates
-NewlyPromotedTVC = read.csv("/Users/Will/Desktop/Survival\ Analysis/Final\ Project/NewlyPromotedTVC.csv")
+NewlyPromotedTVC = read.csv("/Users/Will/Desktop/finalproject/NewlyPromotedTVC.csv")
 
 TVCanalysis <- merge(NewlyPromotedTVC, SquadValues, by = c("Team", "Season"))
 
